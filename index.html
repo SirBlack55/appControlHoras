@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Control de Horas, Ubicación y Motivos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+      body {
+        background-color: #f8fafc;
+        font-family: "Segoe UI", system-ui, sans-serif;
+        touch-action: manipulation;
+      }
+      .tab-active {
+        color: #2563eb;
+        border-bottom: 2px solid #2563eb;
+      }
+      .tab-inactive {
+        color: #64748b;
+        border-bottom: 2px solid transparent;
+      }
+      .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 4px;
+      }
+      .calendar-day {
+        aspect-ratio: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        position: relative;
+        cursor: pointer;
+        border: 1px solid transparent;
+      }
+      .has-work::after {
+        content: "";
+        position: absolute;
+        bottom: 4px;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+      }
+      .status-pending::after {
+        background-color: #f97316;
+      }
+      .status-paid::after {
+        background-color: #22c55e;
+      }
+      .status-off::after {
+        background-color: #94a3b8;
+      } /* Gris para días libres */
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+    </style>
+  </head>
+  <body class="min-h-screen pb-24">
+    <!-- Header con Tabs -->
+    <div class="w-full bg-white shadow-sm sticky top-0 z-20">
+      <header class="max-w-md mx-auto p-4 pb-0">
+        <div class="flex justify-between items-center mb-4">
+          <h1 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+            <i data-lucide="calendar-check" class="w-6 h-6 text-blue-600"></i>
+            Mi Jornada
+          </h1>
+          <div
+            id="selection-counter"
+            class="hidden bg-blue-100 text-blue-700 text-xs font-bold px-2 py-1 rounded-full"
+          >
+            0 seleccionados
+          </div>
+        </div>
+
+        <div class="flex w-full text-sm font-medium">
+          <button
+            onclick="switchTab('list')"
+            id="tab-list"
+            class="flex-1 pb-3 text-center tab-active text-lg"
+          >
+            📝 Registro
+          </button>
+          <button
+            onclick="switchTab('calendar')"
+            id="tab-calendar"
+            class="flex-1 pb-3 text-center tab-inactive text-lg"
+          >
+            📅 Calendario
+          </button>
+        </div>
+      </header>
+    </div>
+
+    <main class="max-w-md mx-auto p-4 space-y-4">
+      <!-- Panel de Estadísticas -->
+      <div id="stats-panel" class="grid grid-cols-1 gap-3">
+        <div
+          class="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 flex justify-between items-center"
+        >
+          <div>
+            <p
+              class="text-[10px] text-gray-400 uppercase font-black tracking-widest"
+            >
+              Pendiente
+            </p>
+            <p class="text-3xl font-black text-orange-500" id="moneyPending">
+              0€
+            </p>
+          </div>
+          <div class="text-right">
+            <p
+              class="text-[10px] text-gray-400 uppercase font-black tracking-widest"
+            >
+              Cobrado
+            </p>
+            <p class="text-xl font-bold text-green-600" id="moneyPaid">0€</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vista Lista -->
+      <div id="view-list" class="space-y-4">
+        <!-- Selector de tipo de entrada -->
+        <div class="flex gap-2 p-1 bg-gray-200 rounded-2xl">
+          <button
+            onclick="setFormMode('work')"
+            id="mode-work"
+            class="flex-1 py-2 rounded-xl text-xs font-bold transition-all bg-white shadow-sm text-blue-600"
+          >
+            TRABAJO
+          </button>
+          <button
+            onclick="setFormMode('off')"
+            id="mode-off"
+            class="flex-1 py-2 rounded-xl text-xs font-bold transition-all text-gray-500"
+          >
+            DÍA LIBRE / OTROS
+          </button>
+        </div>
+
+        <!-- Formulario Dinámico -->
+        <div class="bg-white rounded-3xl shadow-sm p-5 border border-gray-100">
+          <div class="space-y-3">
+            <input
+              type="date"
+              id="dateInput"
+              class="w-full bg-gray-50 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500"
+            />
+
+            <!-- Campos para TRABAJO -->
+            <div id="form-work" class="space-y-3">
+              <div class="flex gap-2">
+                <input
+                  type="number"
+                  id="hoursInput"
+                  placeholder="Horas"
+                  class="flex-1 bg-gray-50 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500"
+                />
+                <div
+                  class="flex items-center px-4 bg-blue-50 rounded-xl text-blue-700 font-bold text-sm"
+                >
+                  10€/h
+                </div>
+              </div>
+              <input
+                type="text"
+                id="locationInput"
+                list="locationsList"
+                placeholder="Ubicación (Ej: Rute)"
+                class="w-full bg-gray-50 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500"
+              />
+              <datalist id="locationsList"></datalist>
+            </div>
+
+            <!-- Campos para DÍA LIBRE -->
+            <div id="form-off" class="hidden">
+              <select
+                id="reasonInput"
+                class="w-full bg-gray-50 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="Descanso">😴 Descanso / Fin de semana</option>
+                <option value="Lluvia">🌧️ Lluvia / Mal tiempo</option>
+                <option value="Fiesta">🎉 Fiesta / Festivo</option>
+                <option value="Enfermedad">🤒 Enfermedad</option>
+                <option value="Otros">❓ Otros motivos</option>
+              </select>
+            </div>
+
+            <button
+              onclick="addEntry()"
+              class="w-full bg-blue-600 text-white font-black rounded-2xl py-4 shadow-lg shadow-blue-100 active:scale-95 transition-all uppercase tracking-widest text-xs"
+            >
+              Guardar en Historial
+            </button>
+          </div>
+        </div>
+
+        <!-- Acciones Masivas -->
+        <div
+          id="bulk-actions"
+          class="hidden bg-blue-600 p-4 rounded-2xl flex justify-between items-center text-white sticky top-24 z-10 shadow-2xl"
+        >
+          <span class="text-xs font-bold" id="bulk-text">0 seleccionados</span>
+          <div class="flex gap-2">
+            <button
+              onclick="markBulkPaid('transfer')"
+              class="bg-white text-blue-600 text-[10px] font-black px-3 py-2 rounded-lg"
+            >
+              BANCO 🏦
+            </button>
+            <button
+              onclick="markBulkPaid('cash')"
+              class="bg-white text-green-600 text-[10px] font-black px-3 py-2 rounded-lg"
+            >
+              MANO 💵
+            </button>
+          </div>
+        </div>
+
+        <div id="historyList" class="space-y-4"></div>
+      </div>
+
+      <!-- Vista Calendario -->
+      <div id="view-calendar" class="hidden">
+        <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-5">
+          <div class="flex justify-between items-center mb-6">
+            <button
+              onclick="changeMonth(-1)"
+              class="p-2 hover:bg-gray-100 rounded-full"
+            >
+              <i data-lucide="chevron-left"></i>
+            </button>
+            <h2
+              id="monthLabel"
+              class="text-lg font-black text-gray-800 capitalize"
+            >
+              Enero 2024
+            </h2>
+            <button
+              onclick="changeMonth(1)"
+              class="p-2 hover:bg-gray-100 rounded-full"
+            >
+              <i data-lucide="chevron-right"></i>
+            </button>
+          </div>
+          <div
+            class="calendar-grid mb-2 text-center text-[10px] font-bold text-gray-300 uppercase tracking-widest"
+          >
+            <div>L</div>
+            <div>M</div>
+            <div>X</div>
+            <div>J</div>
+            <div>V</div>
+            <div>S</div>
+            <div>D</div>
+          </div>
+          <div id="calendarDays" class="calendar-grid"></div>
+
+          <div
+            class="mt-6 flex flex-wrap gap-4 justify-center text-[10px] font-bold uppercase text-gray-400 tracking-tighter"
+          >
+            <div class="flex items-center gap-1">
+              <span class="w-2 h-2 rounded-full bg-orange-500"></span> Pendiente
+            </div>
+            <div class="flex items-center gap-1">
+              <span class="w-2 h-2 rounded-full bg-green-500"></span> Cobrado
+            </div>
+            <div class="flex items-center gap-1">
+              <span class="w-2 h-2 rounded-full bg-slate-400"></span> No
+              laborable
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Modal Cobro -->
+    <div
+      id="payment-modal"
+      class="hidden fixed inset-0 bg-gray-900/60 z-50 flex items-center justify-center p-6 backdrop-blur-md"
+    >
+      <div class="bg-white w-full max-w-xs rounded-[2.5rem] p-8 shadow-2xl">
+        <h3 class="text-xl font-black text-center mb-6 text-gray-800">
+          ¿Cómo cobraste?
+        </h3>
+        <div class="space-y-3">
+          <button
+            onclick="confirmPayment('transfer')"
+            class="w-full p-5 bg-blue-600 text-white rounded-2xl font-bold"
+          >
+            Transferencia 🏦
+          </button>
+          <button
+            onclick="confirmPayment('cash')"
+            class="w-full p-5 bg-green-600 text-white rounded-2xl font-bold"
+          >
+            En Metálico 💵
+          </button>
+          <button
+            onclick="closeModal()"
+            class="w-full p-4 text-gray-400 font-bold"
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const RATE = 10;
+      let entries = JSON.parse(localStorage.getItem("workEntries_v6")) || [];
+      let selectedIds = new Set();
+      let currentMonth = new Date().getMonth();
+      let currentYear = new Date().getFullYear();
+      let formMode = "work"; // 'work' o 'off'
+      let pendingPaidId = null;
+
+      function render() {
+        renderStats();
+        renderList();
+        renderCalendar();
+        updateBulkUI();
+        updateLocationList();
+        lucide.createIcons();
+        localStorage.setItem("workEntries_v6", JSON.stringify(entries));
+      }
+
+      function setFormMode(mode) {
+        formMode = mode;
+        document.getElementById("mode-work").className =
+          mode === "work"
+            ? "flex-1 py-2 rounded-xl text-xs font-bold transition-all bg-white shadow-sm text-blue-600"
+            : "flex-1 py-2 rounded-xl text-xs font-bold transition-all text-gray-500";
+        document.getElementById("mode-off").className =
+          mode === "off"
+            ? "flex-1 py-2 rounded-xl text-xs font-bold transition-all bg-white shadow-sm text-blue-600"
+            : "flex-1 py-2 rounded-xl text-xs font-bold transition-all text-gray-500";
+        document
+          .getElementById("form-work")
+          .classList.toggle("hidden", mode !== "work");
+        document
+          .getElementById("form-off")
+          .classList.toggle("hidden", mode !== "off");
+      }
+
+      function renderStats() {
+        let pending = 0,
+          paid = 0;
+        entries.forEach((e) => {
+          if (e.type === "work") {
+            const total = e.hours * RATE;
+            if (e.paid) paid += total;
+            else pending += total;
+          }
+        });
+        document.getElementById("moneyPending").textContent = pending + "€";
+        document.getElementById("moneyPaid").textContent = paid + "€";
+      }
+
+      function renderList() {
+        const list = document.getElementById("historyList");
+        list.innerHTML = "";
+
+        const grouped = {};
+        entries.forEach((e) => {
+          if (!grouped[e.date]) grouped[e.date] = [];
+          grouped[e.date].push(e);
+        });
+
+        const sortedDates = Object.keys(grouped).sort(
+          (a, b) => new Date(b) - new Date(a)
+        );
+
+        sortedDates.forEach((date) => {
+          const dayEntries = grouped[date];
+          let dayHtml = `<div class="mb-4">
+                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">${formatDateFull(
+                      date
+                    )}</p>
+                    <div class="space-y-2">`;
+
+          dayEntries.forEach((entry) => {
+            const isSelected = selectedIds.has(entry.id);
+            if (entry.type === "work") {
+              dayHtml += `
+                            <div class="bg-white p-4 rounded-2xl border-2 transition-all flex items-center gap-3 ${
+                              isSelected
+                                ? "border-blue-500 bg-blue-50"
+                                : "border-white shadow-sm"
+                            }" onclick="toggleSelect('${entry.id}')">
+                                <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                                  isSelected
+                                    ? "bg-blue-600 border-blue-600"
+                                    : "border-gray-200"
+                                }">
+                                    ${
+                                      isSelected
+                                        ? '<i data-lucide="check" class="w-3 h-3 text-white"></i>'
+                                        : ""
+                                    }
+                                </div>
+                                <div class="flex-1">
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-sm font-black text-gray-800">${
+                                          entry.location
+                                        }</span>
+                                        <span class="text-lg font-black text-blue-600">${
+                                          entry.hours * RATE
+                                        }€</span>
+                                    </div>
+                                    <p class="text-[10px] font-bold text-gray-400">${
+                                      entry.hours
+                                    }h · ${
+                entry.paid ? "COBRADO" : "PENDIENTE"
+              }</p>
+                                </div>
+                                <div class="flex items-center" onclick="event.stopPropagation()">
+                                    ${
+                                      !entry.paid
+                                        ? `<button onclick="openPaymentModal('${entry.id}')" class="p-2 text-blue-500"><i data-lucide="wallet" class="w-5 h-5"></i></button>`
+                                        : `<button onclick="togglePaidStatus('${entry.id}')" class="p-2 text-gray-300"><i data-lucide="rotate-ccw" class="w-4 h-4"></i></button>`
+                                    }
+                                    <button onclick="deleteEntry('${
+                                      entry.id
+                                    }')" class="p-2 text-gray-200"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                                </div>
+                            </div>`;
+            } else {
+              dayHtml += `
+                            <div class="bg-slate-100 p-4 rounded-2xl flex items-center gap-3 border border-slate-200">
+                                <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-slate-400">
+                                    <i data-lucide="coffee" class="w-5 h-5"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-black text-slate-600 uppercase tracking-tight">${entry.reason}</p>
+                                    <p class="text-[10px] font-bold text-slate-400 italic">No laborable</p>
+                                </div>
+                                <button onclick="deleteEntry('${entry.id}')" class="p-2 text-slate-300"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                            </div>`;
+            }
+          });
+          dayHtml += `</div></div>`;
+          list.innerHTML += dayHtml;
+        });
+        lucide.createIcons();
+      }
+
+      function addEntry() {
+        const date = document.getElementById("dateInput").value;
+        if (!date) return alert("Fecha obligatoria");
+
+        if (formMode === "work") {
+          const hours = parseFloat(document.getElementById("hoursInput").value);
+          const location = document
+            .getElementById("locationInput")
+            .value.trim();
+          if (!hours || !location) return alert("Faltan datos");
+          entries.push({
+            id: Date.now().toString(),
+            type: "work",
+            date,
+            hours,
+            location,
+            paid: false,
+          });
+        } else {
+          const reason = document.getElementById("reasonInput").value;
+          entries.push({
+            id: Date.now().toString(),
+            type: "off",
+            date,
+            reason,
+          });
+        }
+
+        document.getElementById("hoursInput").value = "";
+        document.getElementById("locationInput").value = "";
+        render();
+      }
+
+      function renderCalendar() {
+        const grid = document.getElementById("calendarDays");
+        const label = document.getElementById("monthLabel");
+        grid.innerHTML = "";
+        const date = new Date(currentYear, currentMonth, 1);
+        label.textContent = date.toLocaleDateString("es-ES", {
+          month: "long",
+          year: "numeric",
+        });
+
+        const firstDay = (date.getDay() + 6) % 7;
+        const totalDays = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+        for (let i = 0; i < firstDay; i++) grid.innerHTML += `<div></div>`;
+
+        for (let day = 1; day <= totalDays; day++) {
+          const dStr = `${currentYear}-${String(currentMonth + 1).padStart(
+            2,
+            "0"
+          )}-${String(day).padStart(2, "0")}`;
+          const dayItems = entries.filter((e) => e.date === dStr);
+
+          let statusClass = "";
+          if (dayItems.length > 0) {
+            const hasWork = dayItems.some((e) => e.type === "work");
+            const hasOff = dayItems.some((e) => e.type === "off");
+
+            if (hasWork) {
+              statusClass = dayItems
+                .filter((e) => e.type === "work")
+                .every((e) => e.paid)
+                ? "status-paid has-work bg-green-50 text-green-700"
+                : "status-pending has-work bg-orange-50 text-orange-700";
+            } else if (hasOff) {
+              statusClass = "status-off has-work bg-slate-100 text-slate-500";
+            }
+          }
+
+          const dayEl = document.createElement("div");
+          dayEl.className = `calendar-day ${statusClass}`;
+          dayEl.textContent = day;
+          dayEl.onclick = () => {
+            document.getElementById("dateInput").value = dStr;
+            switchTab("list");
+          };
+          grid.appendChild(dayEl);
+        }
+      }
+
+      function toggleSelect(id) {
+        if (selectedIds.has(id)) selectedIds.delete(id);
+        else selectedIds.add(id);
+        render();
+      }
+
+      function updateBulkUI() {
+        const bulkPanel = document.getElementById("bulk-actions");
+        if (selectedIds.size > 0) {
+          bulkPanel.classList.remove("hidden");
+          document.getElementById(
+            "bulk-text"
+          ).textContent = `${selectedIds.size} seleccionados`;
+        } else bulkPanel.classList.add("hidden");
+      }
+
+      function markBulkPaid(method) {
+        entries = entries.map((e) =>
+          selectedIds.has(e.id) ? { ...e, paid: true, method } : e
+        );
+        selectedIds.clear();
+        render();
+      }
+
+      function openPaymentModal(id) {
+        pendingPaidId = id;
+        document.getElementById("payment-modal").classList.remove("hidden");
+      }
+      function closeModal() {
+        document.getElementById("payment-modal").classList.add("hidden");
+      }
+      function confirmPayment(method) {
+        const e = entries.find((e) => e.id === pendingPaidId);
+        if (e) {
+          e.paid = true;
+          e.method = method;
+        }
+        closeModal();
+        render();
+      }
+      function togglePaidStatus(id) {
+        const e = entries.find((e) => e.id === id);
+        if (e) {
+          e.paid = !e.paid;
+          delete e.method;
+          render();
+        }
+      }
+      function deleteEntry(id) {
+        if (confirm("¿Borrar registro?")) {
+          entries = entries.filter((e) => e.id !== id);
+          render();
+        }
+      }
+      function updateLocationList() {
+        const datalist = document.getElementById("locationsList");
+        const locs = [
+          ...new Set(
+            entries.filter((e) => e.type === "work").map((e) => e.location)
+          ),
+        ];
+        datalist.innerHTML = locs.map((l) => `<option value="${l}">`).join("");
+      }
+      function changeMonth(d) {
+        currentMonth += d;
+        if (currentMonth > 11) {
+          currentMonth = 0;
+          currentYear++;
+        }
+        if (currentMonth < 0) {
+          currentMonth = 11;
+          currentYear--;
+        }
+        renderCalendar();
+      }
+      function switchTab(t) {
+        document.getElementById("tab-list").className =
+          t === "list"
+            ? "flex-1 pb-3 text-center tab-active text-lg"
+            : "flex-1 pb-3 text-center tab-inactive text-lg";
+        document.getElementById("tab-calendar").className =
+          t === "calendar"
+            ? "flex-1 pb-3 text-center tab-active text-lg"
+            : "flex-1 pb-3 text-center tab-inactive text-lg";
+        document
+          .getElementById("view-list")
+          .classList.toggle("hidden", t !== "list");
+        document
+          .getElementById("view-calendar")
+          .classList.toggle("hidden", t !== "calendar");
+        render();
+      }
+      function formatDateFull(str) {
+        return new Date(str).toLocaleDateString("es-ES", {
+          weekday: "long",
+          day: "numeric",
+          month: "short",
+        });
+      }
+
+      document.getElementById("dateInput").valueAsDate = new Date();
+      render();
+    </script>
+  </body>
+</html>
