@@ -454,6 +454,24 @@
 
       <!-- VISTA RESUMEN -->
       <div id="view-summary" class="hidden space-y-5">
+        <div class="flex gap-3 mb-4">
+          <!-- Botón Exportar -->
+          <button
+            id="export-btn"
+            class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl py-3.5 shadow-lg shadow-blue-500/30 active:scale-95 transition-all flex justify-center items-center gap-2"
+          >
+            <i data-lucide="download" class="w-5 h-5"></i> Exportar
+          </button>
+
+          <!-- Botón Importar -->
+          <input type="file" id="import-input" accept=".json" class="hidden" />
+          <button
+            id="import-btn"
+            class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl py-3.5 shadow-lg shadow-green-500/30 active:scale-95 transition-all flex justify-center items-center gap-2"
+          >
+            <i data-lucide="upload" class="w-5 h-5"></i> Cargar
+          </button>
+        </div>
         <!-- Selector de mes -->
         <div
           class="bg-white dark:bg-dark-card p-4 rounded-2xl flex items-center gap-3"
@@ -1288,6 +1306,50 @@
 
         renderSummary();
       }
+
+      // --- EXPORTAR DATOS ---
+      document.getElementById("export-btn").addEventListener("click", () => {
+        const dataStr = JSON.stringify(entries, null, 2); // prettier
+        const blob = new Blob([dataStr], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "mi-jornada.json"; // nombre del archivo
+        a.click();
+
+        URL.revokeObjectURL(url); // liberar memoria
+      });
+
+      // --- IMPORTAR DATOS ---
+      document.getElementById("import-btn").addEventListener("click", () => {
+        document.getElementById("import-input").click();
+      });
+
+      document
+        .getElementById("import-input")
+        .addEventListener("change", (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            try {
+              const imported = JSON.parse(event.target.result);
+              if (Array.isArray(imported)) {
+                entries = imported;
+                render();
+                alert("Datos importados correctamente ✅");
+              } else {
+                alert("Archivo inválido ❌");
+              }
+            } catch (err) {
+              alert("Error al leer el archivo ❌");
+              console.error(err);
+            }
+          };
+          reader.readAsText(file);
+        });
 
       // --- INICIO ---
       document.getElementById("dateInput").valueAsDate = new Date();
