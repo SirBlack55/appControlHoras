@@ -1,8 +1,8 @@
 {
-  "name": "Journalist",
-  "short_name": "Journalist",
+  "name": "I - Mi jornada",
+  "short_name": "Mi jornada",
   "description": "Registro diario de jornadas laborales y días no laborables",
-  "start_url": "/",
+  "start_url": "/appControlHoras/",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#7c3aed",
