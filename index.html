@@ -1,13 +1,17 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
   <head>
     <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="/icon-180.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Journalist" />
     <meta name="theme-color" content="#7c3aed" />
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Mi Jornada - Purple Edition</title>
+    <title>I - Mi jornada</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
       tailwind.config = {
         darkMode: "class",
@@ -39,7 +43,9 @@
     </script>
     <style>
       body {
-        transition: background-color 0.3s, color 0.3s;
+        transition:
+          background-color 0.3s,
+          color 0.3s;
         touch-action: manipulation;
       }
       .tab-active {
@@ -137,7 +143,7 @@
             <div
               class="bg-purple-600 text-white p-1.5 rounded-lg shadow-lg shadow-purple-500/20"
             >
-              <i data-lucide="clock" class="w-5 h-5"></i>
+              <i data-lucide="calendar" class="w-5 h-5"></i>
             </div>
             Mi Jornada
           </h1>
@@ -174,6 +180,13 @@
             class="flex-1 py-2 rounded-lg text-center text-slate-500 dark:text-slate-400 transition-all"
           >
             📅 Calendario
+          </button>
+          <button
+            onclick="switchTab('summary')"
+            id="tab-summary"
+            class="flex-1 py-2 rounded-lg text-center text-slate-500 dark:text-slate-400 transition-all"
+          >
+            📊 Resumen
           </button>
         </div>
       </header>
@@ -247,7 +260,7 @@
             <input
               type="date"
               id="dateInput"
-              class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-dark-border rounded-xl p-3 text-sm font-medium dark:text-white outline-none focus:border-purple-500 transition-colors"
+              class="w-full min-w-0 box-border appearance-none bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-dark-border rounded-xl p-3 text-sm font-medium dark:text-white outline-none focus:border-purple-500 transition-colors"
             />
 
             <div id="form-work" class="space-y-4">
@@ -436,6 +449,85 @@
           <div id="calendarDays" class="calendar-grid"></div>
         </div>
       </div>
+
+      <!-- VISTA RESUMEN -->
+      <div id="view-summary" class="hidden space-y-5">
+        <!-- Selector de mes -->
+        <div
+          class="bg-white dark:bg-dark-card p-4 rounded-2xl flex items-center gap-3"
+        >
+          <button onclick="changeSummaryMonth(-1)" class="p-2 rounded-full">
+            ◀
+          </button>
+
+          <h3
+            id="summary-month-label"
+            class="flex-1 text-center font-black capitalize"
+          >
+            Enero 2024
+          </h3>
+
+          <button onclick="changeSummaryMonth(1)" class="p-2 rounded-full">
+            ▶
+          </button>
+        </div>
+        <!-- Resumen rápido -->
+        <div class="grid grid-cols-2 gap-3">
+          <div class="bg-white dark:bg-dark-card p-4 rounded-2xl">
+            <p class="text-[10px] uppercase font-black text-slate-400">
+              Días trabajados
+            </p>
+            <p id="sum-work-days" class="text-2xl font-black text-purple-600">
+              0
+            </p>
+          </div>
+          <div class="bg-white dark:bg-dark-card p-4 rounded-2xl">
+            <p class="text-[10px] uppercase font-black text-slate-400">
+              Días libres
+            </p>
+            <p id="sum-off-days" class="text-2xl font-black text-slate-500">
+              0
+            </p>
+          </div>
+          <div class="bg-white dark:bg-dark-card p-4 rounded-2xl">
+            <p class="text-[10px] uppercase font-black text-slate-400">Horas</p>
+            <p id="sum-hours" class="text-2xl font-black">0h</p>
+          </div>
+          <div class="bg-white dark:bg-dark-card p-4 rounded-2xl">
+            <p class="text-[10px] uppercase font-black text-slate-400">
+              Total generado
+            </p>
+            <p id="sum-total" class="text-2xl font-black text-green-500">0€</p>
+          </div>
+        </div>
+
+        <!-- OFF por razón -->
+        <div class="bg-white dark:bg-dark-card p-4 rounded-2xl">
+          <h3 class="text-sm font-black mb-3">Días no laborables</h3>
+          <div id="off-reasons" class="space-y-2 text-sm"></div>
+        </div>
+
+        <!-- Cobros -->
+        <div class="bg-white dark:bg-dark-card p-4 rounded-2xl">
+          <h3 class="text-sm font-black mb-3">Cobros</h3>
+          <div class="space-y-2 text-sm">
+            <p>💵 Efectivo: <span id="sum-cash">0€</span></p>
+            <p>🏦 Banco: <span id="sum-transfer">0€</span></p>
+            <p>⏳ Pendiente: <span id="sum-pending">0€</span></p>
+          </div>
+        </div>
+
+        <!-- Gráficos -->
+        <div class="bg-white dark:bg-dark-card p-4 rounded-2xl">
+          <h3 class="text-sm font-black mb-3">💰 Dinero</h3>
+          <canvas id="moneyChart" height="200"></canvas>
+        </div>
+
+        <div class="bg-white dark:bg-dark-card p-4 rounded-2xl">
+          <h3 class="text-sm font-black mb-3">💵 Métodos de cobro</h3>
+          <canvas id="methodChart" height="200"></canvas>
+        </div>
+      </div>
     </main>
 
     <!-- MODAL PAGO -->
@@ -513,6 +605,10 @@
       let editingId = null;
       let pendingPaidId = null;
       let selectedDateForModal = null;
+      let summaryMonth = currentMonth;
+      let summaryYear = currentYear;
+      let moneyChart = null;
+      let methodChart = null;
 
       // --- MODO OSCURO ---
       function initTheme() {
@@ -698,7 +794,7 @@
         });
 
         const sortedDates = Object.keys(grouped).sort(
-          (a, b) => new Date(b) - new Date(a)
+          (a, b) => new Date(b) - new Date(a),
         );
 
         sortedDates.forEach((date) => {
@@ -717,8 +813,8 @@
                 ? e.method === "cash"
                   ? "COBRADO · 💵 Mano"
                   : e.method === "transfer"
-                  ? "COBRADO · 🏦 Banco"
-                  : "COBRADO"
+                    ? "COBRADO · 🏦 Banco"
+                    : "COBRADO"
                 : "PENDIENTE";
 
               let paidClass = e.paid ? "text-green-500" : "text-orange-500";
@@ -729,16 +825,16 @@
               ? "border-purple-500"
               : "border-slate-100 dark:border-dark-border"
           } flex items-center gap-3 shadow-sm" onclick="toggleSelect('${
-                e.id
-              }')">
+            e.id
+          }')">
             <div class="flex-1">
               <div class="flex justify-between items-start">
                 <span class="text-sm font-bold dark:text-white">
                   ${e.location} ${
-                e.timeRange
-                  ? `<span class="text-[9px] bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300 px-1.5 py-0.5 rounded ml-1">${e.timeRange}</span>`
-                  : ""
-              }
+                    e.timeRange
+                      ? `<span class="text-[9px] bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300 px-1.5 py-0.5 rounded ml-1">${e.timeRange}</span>`
+                      : ""
+                  }
                 </span>
                 <span class="text-sm font-black text-purple-600 dark:text-purple-400">
                   ${(e.hours * e.rate).toFixed(2)}€
@@ -754,29 +850,44 @@
               </div>
             </div>
             <div class="flex gap-1" onclick="event.stopPropagation()">
-              <button onclick="loadEntryForEdit('${
-                e.id
-              }')" class="p-2 bg-slate-50 dark:bg-slate-800 text-slate-400 rounded-lg">
-                <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
-              </button>
-              
-              <button
-                onclick="togglePaidStatus('${e.id}')"
-                class="p-2 rounded-lg ${
-                  e.paid
-                    ? "bg-slate-50 dark:bg-slate-800 text-slate-300"
-                    : "bg-purple-50 dark:bg-purple-900/20 text-purple-600"
-                }"
-              >
-                <i data-lucide="${
-                  e.paid ? "rotate-ccw" : "wallet"
-                }" class="w-3.5 h-3.5"></i>
-              </button>
 
-              <button onclick="deleteEntry('${e.id}')" class="p-2 text-red-300">
-                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-              </button>
-            </div>
+  <!-- Editar -->
+  <button
+    onclick="loadEntryForEdit('${e.id}')"
+    class="p-2 bg-slate-50 dark:bg-slate-800 text-slate-400 rounded-lg"
+  >
+    <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+  </button>
+
+  <!-- Cobro -->
+  ${
+    e.paid
+      ? `
+      <button
+        onclick="togglePaidStatus('${e.id}')"
+        class="p-2 bg-slate-50 dark:bg-slate-800 text-slate-300 rounded-lg"
+        title="Quitar cobro"
+      >
+        <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+      </button>
+      `
+      : `
+      <button
+        onclick="openPaymentModal('${e.id}')"
+        class="p-2 bg-purple-50 dark:bg-purple-900/20 text-purple-600 rounded-lg"
+        title="Marcar como cobrado"
+      >
+        <i data-lucide="wallet" class="w-3.5 h-3.5"></i>
+      </button>
+      `
+  }
+
+  <!-- Eliminar -->
+  <button onclick="deleteEntry('${e.id}')" class="p-2 text-red-300">
+    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+  </button>
+
+</div>
           </div>
         `;
             } else {
@@ -831,7 +942,7 @@
         for (let day = 1; day <= days; day++) {
           const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(
             2,
-            "0"
+            "0",
           )}-${String(day).padStart(2, "0")}`;
           const items = entries.filter((e) => e.date === dateStr);
           let status = "";
@@ -847,7 +958,7 @@
 
               content += `<span class="text-[8px] font-black">${work.reduce(
                 (s, e) => s + e.hours,
-                0
+                0,
               )}h</span>`;
             } else {
               const reason = items[0].reason;
@@ -870,17 +981,28 @@
           tab === "list" ? "space-y-5" : "hidden";
         document.getElementById("view-calendar").className =
           tab === "calendar" ? "block" : "hidden";
+        document.getElementById("view-summary").className =
+          tab === "summary" ? "space-y-5" : "hidden";
+
         document.getElementById("stats-panel").className =
           tab === "list" ? "grid grid-cols-2 gap-3" : "hidden";
+
         document.getElementById("tab-list").className =
           tab === "list"
             ? "flex-1 py-2 rounded-lg text-center tab-active shadow-sm"
             : "flex-1 py-2 rounded-lg text-center text-slate-500";
+
         document.getElementById("tab-calendar").className =
           tab === "calendar"
             ? "flex-1 py-2 rounded-lg text-center tab-active shadow-sm"
             : "flex-1 py-2 rounded-lg text-center text-slate-500";
-        render();
+
+        document.getElementById("tab-summary").className =
+          tab === "summary"
+            ? "flex-1 py-2 rounded-lg text-center tab-active shadow-sm"
+            : "flex-1 py-2 rounded-lg text-center text-slate-500";
+
+        if (tab === "summary") renderSummary();
       }
 
       function setFormMode(mode) {
@@ -1005,14 +1127,13 @@
           selectedIds.size > 0
             ? "fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-slate-900 dark:bg-purple-900 text-white p-2 pl-4 rounded-full shadow-2xl z-30 flex items-center gap-3 w-max"
             : "hidden";
-        document.getElementById(
-          "bulk-text"
-        ).textContent = `${selectedIds.size} seleccionados`;
+        document.getElementById("bulk-text").textContent =
+          `${selectedIds.size} seleccionados`;
       }
       function updateLocationList() {
         const locs = [
           ...new Set(
-            entries.filter((e) => e.type === "work").map((e) => e.location)
+            entries.filter((e) => e.type === "work").map((e) => e.location),
           ),
         ];
         document.getElementById("locationsList").innerHTML = locs
@@ -1052,6 +1173,118 @@
           day: "numeric",
           month: "short",
         });
+      }
+
+      function renderSummary() {
+        const monthEntries = entries.filter((e) => {
+          const d = new Date(e.date);
+          return (
+            d.getMonth() === summaryMonth && d.getFullYear() === summaryYear
+          );
+        });
+
+        document.getElementById("summary-month-label").textContent = new Date(
+          summaryYear,
+          summaryMonth,
+        ).toLocaleDateString("es-ES", {
+          month: "long",
+          year: "numeric",
+        });
+
+        let workDays = new Set();
+        let offDays = {};
+        let hours = 0;
+        let total = 0;
+        let cash = 0;
+        let transfer = 0;
+        let pending = 0;
+
+        monthEntries.forEach((e) => {
+          if (e.type === "work") {
+            workDays.add(e.date);
+            hours += e.hours;
+            const amount = e.hours * e.rate;
+            total += amount;
+
+            if (e.paid) {
+              if (e.method === "cash") cash += amount;
+              else if (e.method === "transfer") transfer += amount;
+            } else {
+              pending += amount;
+            }
+          } else {
+            offDays[e.reason] = (offDays[e.reason] || 0) + 1;
+          }
+        });
+
+        document.getElementById("sum-work-days").textContent = workDays.size;
+        document.getElementById("sum-off-days").textContent = Object.values(
+          offDays,
+        ).reduce((a, b) => a + b, 0);
+        document.getElementById("sum-hours").textContent =
+          hours.toFixed(1) + "h";
+        document.getElementById("sum-total").textContent =
+          total.toFixed(0) + "€";
+
+        document.getElementById("sum-cash").textContent = cash.toFixed(0) + "€";
+        document.getElementById("sum-transfer").textContent =
+          transfer.toFixed(0) + "€";
+        document.getElementById("sum-pending").textContent =
+          pending.toFixed(0) + "€";
+
+        const offBox = document.getElementById("off-reasons");
+        offBox.innerHTML = "";
+        Object.entries(offDays).forEach(([reason, count]) => {
+          offBox.innerHTML += `<p>${
+            OFF_ICONS[reason] || "—"
+          } ${reason}: ${count}</p>`;
+        });
+
+        // ----- GRÁFICOS -----
+
+        if (moneyChart) moneyChart.destroy();
+        if (methodChart) methodChart.destroy();
+
+        moneyChart = new Chart(document.getElementById("moneyChart"), {
+          type: "doughnut",
+          data: {
+            labels: ["Cobrado", "Pendiente"],
+            datasets: [
+              {
+                data: [cash + transfer, pending],
+                backgroundColor: ["#22c55e", "#fb923c"],
+              },
+            ],
+          },
+        });
+
+        methodChart = new Chart(document.getElementById("methodChart"), {
+          type: "pie",
+          data: {
+            labels: ["Banco", "Efectivo"],
+            datasets: [
+              {
+                data: [transfer, cash],
+                backgroundColor: ["#3b82f6", "#22c55e"],
+              },
+            ],
+          },
+        });
+      }
+
+      function changeSummaryMonth(delta) {
+        summaryMonth += delta;
+
+        if (summaryMonth > 11) {
+          summaryMonth = 0;
+          summaryYear++;
+        }
+        if (summaryMonth < 0) {
+          summaryMonth = 11;
+          summaryYear--;
+        }
+
+        renderSummary();
       }
 
       // --- INICIO ---
