@@ -2,12 +2,12 @@ const CACHE_VERSION = "v2";
 const CACHE_NAME = `jornada-${CACHE_VERSION}`;
 
 const FILES_TO_CACHE = [
-  "/",
-  "/index.html",
-  "/manifest.json",
-  "/icon-180.png",
-  "/icon-192.png",
-  "/icon-512.png",
+  "./",
+  "index.html",
+  "manifest.json",
+  "icon-180.png",
+  "icon-192.png",
+  "icon-512.png",
 ];
 
 // INSTALACIÓN
