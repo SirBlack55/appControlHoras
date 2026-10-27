@@ -1,1363 +1,300 @@
 <!doctype html>
 <html lang="es">
-  <head>
-    <link rel="manifest" href="manifest.json" />
-    <link rel="apple-touch-icon" href="icon-180.png" />
-    <link rel="icon" href="favicon.ico" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-title" content="I - Mi jornada" />
-    <meta name="theme-color" content="#7c3aed" />
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>I - Mi jornada</title>
-    <link rel="stylesheet" href="tailwind.css" />
-    <script src="lib/lucide.min.js"></script>
-    <script src="lib/chart.umd.js"></script>
-    <style>
-      body {
-        transition:
-          background-color 0.3s,
-          color 0.3s;
-        touch-action: manipulation;
-      }
-      .tab-active {
-        color: #8b5cf6;
-        border-bottom: 2px solid #8b5cf6;
-        background-color: white;
-      }
-      .dark .tab-active {
-        color: #a78bfa;
-        border-bottom: 2px solid #a78bfa;
-        background-color: #1e293b;
-      }
-
-      .calendar-grid {
-        display: grid;
-        grid-template-columns: repeat(7, 1fr);
-        gap: 5px;
-      }
-      .calendar-day {
-        aspect-ratio: 0.9;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: flex-start;
-        padding-top: 4px;
-        border-radius: 8px;
-        font-size: 0.8rem;
-        position: relative;
-        cursor: pointer;
-        border: 1px solid #e2e8f0;
-        background: white;
-        transition: all 0.2s;
-      }
-      .dark .calendar-day {
-        background: #1e293b;
-        border-color: #334155;
-        color: #cbd5e1;
-      }
-
-      .status-paid {
-        background-color: #dcfce7 !important;
-        border-color: #86efac !important;
-        color: #166534;
-      }
-      .dark .status-paid {
-        background-color: #064e3b !important;
-        border-color: #065f46 !important;
-        color: #a7f3d0;
-      }
-
-      .status-pending {
-        background-color: #ffedd5 !important;
-        border-color: #fdba74 !important;
-        color: #9a3412;
-      }
-      .dark .status-pending {
-        background-color: #7c2d12 !important;
-        border-color: #9a3412 !important;
-        color: #fed7aa;
-      }
-
-      .status-off {
-        background-color: #f1f5f9 !important;
-        border-color: #cbd5e1 !important;
-        color: #64748b;
-      }
-      .dark .status-off {
-        background-color: #334155 !important;
-        border-color: #475569 !important;
-        color: #94a3b8;
-      }
-
-      .editing-mode {
-        border: 2px solid #f59e0b !important;
-        background-color: #fffbeb !important;
-      }
-      .dark .editing-mode {
-        background-color: #451a03 !important;
-        border-color: #d97706 !important;
-      }
-    </style>
-  </head>
-  <body
-    class="min-h-screen pb-28 text-gray-800 bg-slate-50 dark:bg-dark-bg dark:text-slate-200"
-  >
-    <!-- Header -->
-    <div
-      class="w-full bg-white dark:bg-dark-card shadow-sm sticky top-0 z-20 transition-colors"
-    >
-      <header class="max-w-md mx-auto px-4 pt-4">
-        <div class="flex justify-between items-center mb-4">
-          <h1
-            class="text-xl font-bold flex items-center gap-2 text-gray-800 dark:text-white"
-          >
-            <div
-              class="bg-purple-600 text-white p-1.5 rounded-lg shadow-lg shadow-purple-500/20"
-            >
-              <i data-lucide="calendar" class="w-5 h-5"></i>
-            </div>
-            Mi Jornada
-          </h1>
-
-          <div class="flex items-center gap-2">
-            <button
-              onclick="toggleDarkMode()"
-              class="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors"
-            >
-              <i id="theme-icon" data-lucide="moon" class="w-5 h-5"></i>
-            </button>
-            <div
-              id="selection-counter"
-              class="hidden bg-purple-600 text-white text-xs font-bold px-3 py-1.5 rounded-full"
-            >
-              0 items
-            </div>
-          </div>
-        </div>
-
-        <div
-          class="flex w-full text-sm font-bold bg-slate-100 dark:bg-slate-800 p-1 rounded-xl"
-        >
-          <button
-            onclick="switchTab('list')"
-            id="tab-list"
-            class="flex-1 py-2 rounded-lg text-center tab-active shadow-sm transition-all"
-          >
-            📝 Registro
-          </button>
-          <button
-            onclick="switchTab('calendar')"
-            id="tab-calendar"
-            class="flex-1 py-2 rounded-lg text-center text-slate-500 dark:text-slate-400 transition-all"
-          >
-            📅 Calendario
-          </button>
-          <button
-            onclick="switchTab('summary')"
-            id="tab-summary"
-            class="flex-1 py-2 rounded-lg text-center text-slate-500 dark:text-slate-400 transition-all"
-          >
-            📊 Resumen
-          </button>
-        </div>
-      </header>
-    </div>
-
-    <main class="max-w-md mx-auto p-4 space-y-5">
-      <!-- Panel de Estadísticas -->
-      <div id="stats-panel" class="grid grid-cols-2 gap-3">
-        <div
-          class="bg-white dark:bg-dark-card p-4 rounded-2xl shadow-sm border border-orange-100 dark:border-orange-900/30 relative overflow-hidden"
-        >
-          <p
-            class="text-[10px] text-gray-400 dark:text-slate-500 uppercase font-black tracking-widest mb-1"
-          >
-            Pendiente
-          </p>
-          <p class="text-2xl font-black text-orange-500" id="moneyPending">
-            0€
-          </p>
-        </div>
-        <div
-          class="bg-white dark:bg-dark-card p-4 rounded-2xl shadow-sm border border-green-100 dark:border-green-900/30 relative overflow-hidden"
-        >
-          <p
-            class="text-[10px] text-gray-400 dark:text-slate-500 uppercase font-black tracking-widest mb-1"
-          >
-            Cobrado
-          </p>
-          <p class="text-2xl font-black text-green-500" id="moneyPaid">0€</p>
-        </div>
-      </div>
-
-      <!-- VISTA LISTA -->
-      <div id="view-list" class="space-y-5">
-        <!-- Formulario -->
-        <div
-          id="entry-form-card"
-          class="bg-white dark:bg-dark-card rounded-3xl shadow-sm p-5 border border-slate-200 dark:border-dark-border transition-all"
-        >
-          <div
-            id="edit-header"
-            class="hidden flex justify-between items-center mb-3 text-amber-500 font-bold text-sm"
-          >
-            <span class="flex items-center gap-1"
-              ><i data-lucide="pencil" class="w-4 h-4"></i> Editando
-              entrada</span
-            >
-            <button onclick="cancelEdit()" class="text-xs underline">
-              Cancelar
-            </button>
-          </div>
-
-          <div class="flex mb-4 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
-            <button
-              onclick="setFormMode('work')"
-              id="mode-work"
-              class="flex-1 text-xs font-bold py-2 rounded-lg bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-300 shadow-sm transition-all"
-            >
-              TRABAJO
-            </button>
-            <button
-              onclick="setFormMode('off')"
-              id="mode-off"
-              class="flex-1 text-xs font-bold py-2 rounded-lg text-slate-400 transition-all"
-            >
-              DESCANSO
-            </button>
-          </div>
-
-          <div class="space-y-4">
-            <input
-              type="date"
-              id="dateInput"
-              class="w-full min-w-0 box-border appearance-none bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-dark-border rounded-xl p-3 text-sm font-medium dark:text-white outline-none focus:border-purple-500 transition-colors"
-            />
-
-            <div id="form-work" class="space-y-4">
-              <div
-                class="flex items-center gap-4 text-xs font-bold text-slate-500 px-1"
-              >
-                <label class="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    id="radio-total"
-                    name="timeMode"
-                    value="total"
-                    checked
-                    onclick="toggleTimeInput('total')"
-                    class="accent-purple-600"
-                  />
-                  Total
-                </label>
-                <label class="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    id="radio-range"
-                    name="timeMode"
-                    value="range"
-                    onclick="toggleTimeInput('range')"
-                    class="accent-purple-600"
-                  />
-                  Horario
-                </label>
-              </div>
-
-              <div id="input-total-hours">
-                <div class="relative">
-                  <input
-                    type="number"
-                    id="hoursInput"
-                    placeholder="Horas totales"
-                    step="0.5"
-                    class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-dark-border rounded-xl p-3 text-sm font-medium dark:text-white outline-none focus:border-purple-500"
-                  />
-                  <span
-                    class="absolute right-3 top-3.5 text-xs text-slate-400 font-bold"
-                    >Hrs</span
-                  >
-                </div>
-              </div>
-
-              <div
-                id="input-time-range"
-                class="hidden space-y-2 bg-purple-50 dark:bg-purple-900/20 p-3 rounded-xl border border-purple-100 dark:border-purple-900/30"
-              >
-                <div class="flex items-center gap-2">
-                  <input
-                    type="time"
-                    id="startTime"
-                    onchange="calculateHours()"
-                    class="flex-1 bg-white dark:bg-slate-800 border dark:border-dark-border rounded-lg p-2 text-sm font-bold dark:text-white outline-none"
-                  />
-                  <div class="text-purple-300">
-                    <i data-lucide="arrow-right" class="w-4 h-4"></i>
-                  </div>
-                  <input
-                    type="time"
-                    id="endTime"
-                    onchange="calculateHours()"
-                    class="flex-1 bg-white dark:bg-slate-800 border dark:border-dark-border rounded-lg p-2 text-sm font-bold dark:text-white outline-none"
-                  />
-                </div>
-                <div class="text-center">
-                  <span
-                    id="calculated-hours-display"
-                    class="text-xs font-bold text-purple-600 dark:text-purple-400"
-                    >0.00 horas</span
-                  >
-                </div>
-              </div>
-
-              <div class="flex gap-2">
-                <input
-                  type="text"
-                  id="locationInput"
-                  list="locationsList"
-                  placeholder="📍 Ubicación"
-                  class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-dark-border rounded-xl p-3 text-sm font-medium dark:text-white outline-none focus:border-purple-500"
-                />
-                <div class="relative w-24">
-                  <input
-                    type="number"
-                    id="rateInput"
-                    value="10"
-                    class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-dark-border rounded-xl p-3 text-sm font-medium dark:text-white text-center outline-none focus:border-purple-500"
-                  />
-                  <span
-                    class="absolute right-2 top-3.5 text-xs text-slate-400 font-bold"
-                    >€</span
-                  >
-                </div>
-              </div>
-              <datalist id="locationsList"></datalist>
-            </div>
-
-            <div id="form-off" class="hidden">
-              <select
-                id="reasonInput"
-                class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-dark-border rounded-xl p-3 text-sm font-medium dark:text-white outline-none"
-              >
-                <option value="Descanso">😴 Descanso</option>
-                <option value="Festivo">🎉 Festivo</option>
-                <option value="Lluvia">🌧️ Lluvia</option>
-                <option value="Enfermedad">🤒 Enfermedad</option>
-              </select>
-            </div>
-
-            <button
-              id="save-btn"
-              onclick="addEntry()"
-              class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl py-3.5 shadow-lg shadow-purple-500/30 active:scale-95 transition-all flex justify-center items-center gap-2"
-            >
-              <i data-lucide="save" class="w-5 h-5"></i> Guardar Registro
-            </button>
-          </div>
-        </div>
-
-        <!-- Acciones Masivas -->
-        <div
-          id="bulk-actions"
-          class="hidden fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-slate-900 dark:bg-purple-950 text-white p-2 pl-4 rounded-full shadow-2xl z-30 flex items-center gap-3 w-max animate-bounce-in"
-        >
-          <span class="text-xs font-bold" id="bulk-text">0 items</span>
-          <div class="flex gap-1">
-            <button
-              onclick="markBulkPaid('transfer')"
-              class="bg-blue-600 px-3 py-2 rounded-full text-[10px] font-bold"
-            >
-              BANCO
-            </button>
-            <button
-              onclick="markBulkPaid('cash')"
-              class="bg-green-600 px-3 py-2 rounded-full text-[10px] font-bold"
-            >
-              EFECTIVO
-            </button>
-          </div>
-        </div>
-
-        <!-- Lista Historial -->
-        <div id="historyList" class="space-y-4 pb-10"></div>
-      </div>
-
-      <!-- VISTA CALENDARIO -->
-      <div id="view-calendar" class="hidden">
-        <div
-          class="bg-white dark:bg-dark-card rounded-3xl shadow-sm border border-slate-200 dark:border-dark-border p-4 transition-colors"
-        >
-          <div class="flex justify-between items-center mb-6">
-            <button
-              onclick="changeMonth(-1)"
-              class="p-2 dark:hover:bg-slate-800 rounded-full"
-            >
-              <i data-lucide="chevron-left" class="w-6 h-6"></i>
-            </button>
-            <h2
-              id="monthLabel"
-              class="text-lg font-black text-gray-800 dark:text-white capitalize"
-            >
-              Enero 2024
-            </h2>
-            <button
-              onclick="changeMonth(1)"
-              class="p-2 dark:hover:bg-slate-800 rounded-full"
-            >
-              <i data-lucide="chevron-right" class="w-6 h-6"></i>
-            </button>
-          </div>
-          <div
-            class="calendar-grid mb-2 text-center text-[10px] font-bold text-slate-400 uppercase"
-          >
-            <div>L</div>
-            <div>M</div>
-            <div>X</div>
-            <div>J</div>
-            <div>V</div>
-            <div>S</div>
-            <div>D</div>
-          </div>
-          <div id="calendarDays" class="calendar-grid"></div>
-        </div>
-      </div>
-
-      <!-- VISTA RESUMEN -->
-      <div id="view-summary" class="hidden space-y-5">
-        <div class="flex gap-3 mb-4">
-          <!-- Botón Exportar -->
-          <button
-            id="export-btn"
-            class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl py-3.5 shadow-lg shadow-blue-500/30 active:scale-95 transition-all flex justify-center items-center gap-2"
-          >
-            <i data-lucide="download" class="w-5 h-5"></i> Exportar
-          </button>
-
-          <!-- Botón Importar -->
-          <input type="file" id="import-input" accept=".json" class="hidden" />
-          <button
-            id="import-btn"
-            class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl py-3.5 shadow-lg shadow-green-500/30 active:scale-95 transition-all flex justify-center items-center gap-2"
-          >
-            <i data-lucide="upload" class="w-5 h-5"></i> Cargar
-          </button>
-        </div>
-        <!-- Selector de mes -->
-        <div
-          class="bg-white dark:bg-dark-card p-4 rounded-2xl flex items-center gap-3"
-        >
-          <button onclick="changeSummaryMonth(-1)" class="p-2 rounded-full">
-            ◀
-          </button>
-
-          <h3
-            id="summary-month-label"
-            class="flex-1 text-center font-black capitalize"
-          >
-            Enero 2024
-          </h3>
-
-          <button onclick="changeSummaryMonth(1)" class="p-2 rounded-full">
-            ▶
-          </button>
-        </div>
-        <!-- Resumen rápido -->
-        <div class="grid grid-cols-2 gap-3">
-          <div class="bg-white dark:bg-dark-card p-4 rounded-2xl">
-            <p class="text-[10px] uppercase font-black text-slate-400">
-              Días trabajados
-            </p>
-            <p id="sum-work-days" class="text-2xl font-black text-purple-600">
-              0
-            </p>
-          </div>
-          <div class="bg-white dark:bg-dark-card p-4 rounded-2xl">
-            <p class="text-[10px] uppercase font-black text-slate-400">
-              Días libres
-            </p>
-            <p id="sum-off-days" class="text-2xl font-black text-slate-500">
-              0
-            </p>
-          </div>
-          <div class="bg-white dark:bg-dark-card p-4 rounded-2xl">
-            <p class="text-[10px] uppercase font-black text-slate-400">Horas</p>
-            <p id="sum-hours" class="text-2xl font-black">0h</p>
-          </div>
-          <div class="bg-white dark:bg-dark-card p-4 rounded-2xl">
-            <p class="text-[10px] uppercase font-black text-slate-400">
-              Total generado
-            </p>
-            <p id="sum-total" class="text-2xl font-black text-green-500">0€</p>
-          </div>
-        </div>
-
-        <!-- OFF por razón -->
-        <div class="bg-white dark:bg-dark-card p-4 rounded-2xl">
-          <h3 class="text-sm font-black mb-3">Días no laborables</h3>
-          <div id="off-reasons" class="space-y-2 text-sm"></div>
-        </div>
-
-        <!-- Cobros -->
-        <div class="bg-white dark:bg-dark-card p-4 rounded-2xl">
-          <h3 class="text-sm font-black mb-3">Cobros</h3>
-          <div class="space-y-2 text-sm">
-            <p>💵 Efectivo: <span id="sum-cash">0€</span></p>
-            <p>🏦 Banco: <span id="sum-transfer">0€</span></p>
-            <p>⏳ Pendiente: <span id="sum-pending">0€</span></p>
-          </div>
-        </div>
-
-        <!-- Gráficos -->
-        <div class="bg-white dark:bg-dark-card p-4 rounded-2xl">
-          <h3 class="text-sm font-black mb-3">💰 Dinero</h3>
-          <canvas id="moneyChart" height="200"></canvas>
-        </div>
-
-        <div class="bg-white dark:bg-dark-card p-4 rounded-2xl">
-          <h3 class="text-sm font-black mb-3">💵 Métodos de cobro</h3>
-          <canvas id="methodChart" height="200"></canvas>
-        </div>
-      </div>
-    </main>
-
-    <!-- MODAL PAGO -->
-    <div
-      id="payment-modal"
-      class="hidden fixed inset-0 bg-slate-900/80 z-50 flex items-center justify-center p-6 backdrop-blur-sm"
-    >
-      <div
-        class="bg-white dark:bg-dark-card w-full max-w-xs rounded-3xl p-6 shadow-xl border dark:border-dark-border"
-      >
-        <h3 class="text-lg font-bold text-center mb-4 dark:text-white">
-          Marcar como cobrado
-        </h3>
-        <div class="grid grid-cols-2 gap-3">
-          <button
-            onclick="confirmPayment('transfer')"
-            class="p-4 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 font-bold rounded-2xl border border-blue-200 dark:border-blue-900/50"
-          >
-            Banco 🏦
-          </button>
-          <button
-            onclick="confirmPayment('cash')"
-            class="p-4 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 font-bold rounded-2xl border border-green-200 dark:border-green-900/50"
-          >
-            Mano 💵
-          </button>
-        </div>
-        <button
-          onclick="closePaymentModal()"
-          class="w-full mt-4 text-slate-400 font-medium"
-        >
-          Cancelar
-        </button>
-      </div>
-    </div>
-
-    <!-- MODAL DÍA (Detalles) -->
-    <div
-      id="day-modal"
-      class="hidden fixed inset-0 bg-slate-900/80 z-50 flex items-center justify-center backdrop-blur-sm pb-safe"
-    >
-      <div
-        class="bg-white dark:bg-dark-card w-full max-w-sm rounded-3xl sm:rounded-3xl p-6 shadow-2xl border dark:border-dark-border mb-4 max-h-[90vh] overflow-y-auto"
-      >
-        <div class="flex justify-between items-center mb-4">
-          <h3
-            id="modal-date-title"
-            class="text-xl font-black text-slate-800 dark:text-white capitalize"
-          ></h3>
-          <button
-            onclick="closeDayModal()"
-            class="p-2 bg-slate-100 dark:bg-slate-800 rounded-full"
-          >
-            <i data-lucide="x" class="w-5 h-5"></i>
-          </button>
-        </div>
-        <div id="modal-content" class="space-y-3 mb-6"></div>
-        <button
-          onclick="addEntryFromModal()"
-          class="w-full py-3 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-300 font-bold rounded-xl flex justify-center gap-2"
-        >
-          <i data-lucide="plus" class="w-5 h-5"></i> Nuevo registro hoy
-        </button>
-      </div>
-    </div>
-
-    <script>
-      // --- ESTADO Y PERSISTENCIA ---
-      let entries = JSON.parse(localStorage.getItem("workEntries_v10")) || [];
-      let selectedIds = new Set();
-      let currentMonth = new Date().getMonth();
-      let currentYear = new Date().getFullYear();
-      let formMode = "work";
-      let timeInputMode = "total";
-      let editingId = null;
-      let pendingPaidId = null;
-      let selectedDateForModal = null;
-      let summaryMonth = currentMonth;
-      let summaryYear = currentYear;
-      let moneyChart = null;
-      let methodChart = null;
-
-      // --- MODO OSCURO ---
-      function initTheme() {
-        const savedTheme = localStorage.getItem("theme");
-        if (
-          savedTheme === "dark" ||
-          (!savedTheme &&
-            window.matchMedia("(prefers-color-scheme: dark)").matches)
-        ) {
-          document.documentElement.classList.add("dark");
-          updateThemeIcon(true);
-        }
-      }
-
-      function toggleDarkMode() {
-        const isDark = document.documentElement.classList.toggle("dark");
-        localStorage.setItem("theme", isDark ? "dark" : "light");
-        updateThemeIcon(isDark);
-      }
-
-      function updateThemeIcon(isDark) {
-        const icon = document.getElementById("theme-icon");
-        icon.setAttribute("data-lucide", isDark ? "sun" : "moon");
-        lucide.createIcons();
-      }
-
-      // --- FUNCIONES CORE ---
-      function render() {
-        renderStats();
-        renderList();
-        renderCalendar();
-        updateBulkUI();
-        updateLocationList();
-        lucide.createIcons();
-        localStorage.setItem("workEntries_v10", JSON.stringify(entries));
-      }
-
-      function toggleTimeInput(mode) {
-        timeInputMode = mode;
-        document.getElementById("input-total-hours").className =
-          mode === "total" ? "block" : "hidden";
-        document.getElementById("input-time-range").className =
-          mode === "range"
-            ? "block space-y-2 bg-purple-50 dark:bg-purple-900/20 p-3 rounded-xl border border-purple-100 dark:border-purple-900/30"
-            : "hidden";
-      }
-
-      function calculateHours() {
-        const start = document.getElementById("startTime").value;
-        const end = document.getElementById("endTime").value;
-        const display = document.getElementById("calculated-hours-display");
-        if (start && end) {
-          let s = new Date(`2000-01-01T${start}`);
-          let e = new Date(`2000-01-01T${end}`);
-          let diff = (e - s) / 1000 / 60 / 60;
-          if (diff < 0) diff += 24;
-          display.textContent = `${diff.toFixed(2)} horas`;
-          return diff;
-        }
-        return 0;
-      }
-
-      function addEntry() {
-        const date = document.getElementById("dateInput").value;
-        if (!date) return;
-
-        let newEntry = { date };
-        if (formMode === "work") {
-          const location = document
-            .getElementById("locationInput")
-            .value.trim();
-          const rate =
-            parseFloat(document.getElementById("rateInput").value) || 10;
-          let hours =
-            timeInputMode === "total"
-              ? parseFloat(document.getElementById("hoursInput").value)
-              : calculateHours();
-          let range =
-            timeInputMode === "range"
-              ? `${document.getElementById("startTime").value} - ${
-                  document.getElementById("endTime").value
-                }`
-              : null;
-
-          if (!hours || !location) return alert("Rellena horas y ubicación");
-          newEntry = {
-            ...newEntry,
-            type: "work",
-            location,
-            rate,
-            hours,
-            timeRange: range,
-            paid: false,
-            method: null, // 🔹 esto es clave
-          };
-        } else {
-          newEntry = {
-            ...newEntry,
-            type: "off",
-            reason: document.getElementById("reasonInput").value,
-          };
-        }
-
-        if (editingId) {
-          const idx = entries.findIndex((e) => e.id === editingId);
-          newEntry.id = editingId;
-          newEntry.paid = entries[idx].paid;
-          newEntry.method = entries[idx].method;
-          entries[idx] = newEntry;
-          cancelEdit();
-        } else {
-          newEntry.id = Date.now().toString();
-          entries.push(newEntry);
-        }
-
-        clearForm();
-        render();
-      }
-
-      function clearForm() {
-        document.getElementById("hoursInput").value = "";
-        document.getElementById("startTime").value = "";
-        document.getElementById("endTime").value = "";
-        document.getElementById("locationInput").value = "";
-        document.getElementById("calculated-hours-display").textContent =
-          "0.00 horas";
-      }
-
-      function loadEntryForEdit(id) {
-        const e = entries.find((e) => e.id === id);
-        editingId = id;
-        document.getElementById("edit-header").classList.remove("hidden");
-        document
-          .getElementById("entry-form-card")
-          .classList.add("editing-mode");
-        document.getElementById("dateInput").value = e.date;
-        setFormMode(e.type);
-
-        if (e.type === "work") {
-          document.getElementById("locationInput").value = e.location;
-          document.getElementById("rateInput").value = e.rate;
-          if (e.timeRange) {
-            document.getElementById("radio-range").checked = true;
-            toggleTimeInput("range");
-            const [s, end] = e.timeRange.split(" - ");
-            document.getElementById("startTime").value = s;
-            document.getElementById("endTime").value = end;
-            calculateHours();
-          } else {
-            document.getElementById("radio-total").checked = true;
-            toggleTimeInput("total");
-            document.getElementById("hoursInput").value = e.hours;
-          }
-        }
-        closeDayModal();
-        switchTab("list");
-        window.scrollTo({ top: 0, behavior: "smooth" });
-        lucide.createIcons();
-      }
-
-      function cancelEdit() {
-        editingId = null;
-        document.getElementById("edit-header").classList.add("hidden");
-        document
-          .getElementById("entry-form-card")
-          .classList.remove("editing-mode");
-        const btn = document.getElementById("save-btn");
-        btn.innerHTML = `<i data-lucide="save" class="w-5 h-5"></i> Guardar Registro`;
-        clearForm();
-        lucide.createIcons();
-      }
-
-      // --- RENDERIZADO DE LISTA ---
-      function renderList() {
-        const list = document.getElementById("historyList");
-        list.innerHTML = "";
-
-        // Agrupar por fecha
-        const grouped = {};
-        entries.forEach((e) => {
-          if (!grouped[e.date]) grouped[e.date] = [];
-          grouped[e.date].push(e);
-        });
-
-        const sortedDates = Object.keys(grouped).sort(
-          (a, b) => new Date(b) - new Date(a),
-        );
-
-        sortedDates.forEach((date) => {
-          let dayHtml = `<div class="mb-4">
-      <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-tighter mb-2 px-1">
-        ${formatDateFull(date)}
-      </h4>
-      <div class="space-y-2">`;
-
-          grouped[date].forEach((e) => {
-            const isSelected = selectedIds.has(e.id);
-
-            if (e.type === "work") {
-              // Estado y método de pago
-              let paidText = e.paid
-                ? e.method === "cash"
-                  ? "COBRADO · 💵 Mano"
-                  : e.method === "transfer"
-                    ? "COBRADO · 🏦 Banco"
-                    : "COBRADO"
-                : "PENDIENTE";
-
-              let paidClass = e.paid ? "text-green-500" : "text-orange-500";
-
-              dayHtml += `
-          <div class="bg-white dark:bg-dark-card p-3 rounded-2xl border ${
-            isSelected
-              ? "border-purple-500"
-              : "border-slate-100 dark:border-dark-border"
-          } flex items-center gap-3 shadow-sm" onclick="toggleSelect('${
-            e.id
-          }')">
-            <div class="flex-1">
-              <div class="flex justify-between items-start">
-                <span class="text-sm font-bold dark:text-white">
-                  ${e.location} ${
-                    e.timeRange
-                      ? `<span class="text-[9px] bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300 px-1.5 py-0.5 rounded ml-1">${e.timeRange}</span>`
-                      : ""
-                  }
-                </span>
-                <span class="text-sm font-black text-purple-600 dark:text-purple-400">
-                  ${(e.hours * e.rate).toFixed(2)}€
-                </span>
-              </div>
-              <div class="flex justify-between items-center mt-1">
-                <span class="text-[10px] text-slate-400 font-bold">${
-                  e.hours
-                }h · ${e.rate}€/h</span>
-                <span class="text-[9px] font-black uppercase ${paidClass}">
-                  ${paidText}
-                </span>
-              </div>
-            </div>
-            <div class="flex gap-1" onclick="event.stopPropagation()">
-
-  <!-- Editar -->
-  <button
-    onclick="loadEntryForEdit('${e.id}')"
-    class="p-2 bg-slate-50 dark:bg-slate-800 text-slate-400 rounded-lg"
-  >
-    <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
-  </button>
-
-  <!-- Cobro -->
-  ${
-    e.paid
-      ? `
-      <button
-        onclick="togglePaidStatus('${e.id}')"
-        class="p-2 bg-slate-50 dark:bg-slate-800 text-slate-300 rounded-lg"
-        title="Quitar cobro"
-      >
-        <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
-      </button>
-      `
-      : `
-      <button
-        onclick="openPaymentModal('${e.id}')"
-        class="p-2 bg-purple-50 dark:bg-purple-900/20 text-purple-600 rounded-lg"
-        title="Marcar como cobrado"
-      >
-        <i data-lucide="wallet" class="w-3.5 h-3.5"></i>
-      </button>
-      `
-  }
-
-  <!-- Eliminar -->
-  <button onclick="deleteEntry('${e.id}')" class="p-2 text-red-300">
-    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-  </button>
-
-</div>
-          </div>
-        `;
-            } else {
-              // Días no laborales con icono según OFF_ICONS
-              const icon = OFF_ICONS[e.reason] || "—";
-
-              dayHtml += `
-          <div class="bg-slate-100 dark:bg-slate-800/50 p-3 rounded-2xl border border-dashed border-slate-200 dark:border-dark-border flex justify-between items-center">
-            <span class="text-xs font-bold text-slate-500 uppercase">${icon} ${e.reason}</span>
-            <div class="flex gap-1">
-              <button onclick="loadEntryForEdit('${e.id}')" class="p-2 text-slate-400">
-                <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
-              </button>
-              <button onclick="deleteEntry('${e.id}')" class="p-2 text-red-300">
-                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-              </button>
-            </div>
-          </div>
-        `;
-            }
-          });
-
-          dayHtml += `</div></div>`;
-          list.innerHTML += dayHtml;
-        });
-
-        // Volver a crear los iconos lucide después de renderizar
-        lucide.createIcons();
-      }
-
-      // --- CALENDARIO ---
-      const OFF_ICONS = {
-        Descanso: "😴",
-        Festivo: "🎉",
-        Lluvia: "🌧️",
-        Enfermedad: "🤒",
-      };
-
-      function renderCalendar() {
-        const grid = document.getElementById("calendarDays");
-        const label = document.getElementById("monthLabel");
-        grid.innerHTML = "";
-        const d = new Date(currentYear, currentMonth, 1);
-        label.textContent = d.toLocaleDateString("es-ES", {
-          month: "long",
-          year: "numeric",
-        });
-        const start = (d.getDay() + 6) % 7;
-        const days = new Date(currentYear, currentMonth + 1, 0).getDate();
-
-        for (let i = 0; i < start; i++) grid.innerHTML += `<div></div>`;
-        for (let day = 1; day <= days; day++) {
-          const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(
-            2,
-            "0",
-          )}-${String(day).padStart(2, "0")}`;
-          const items = entries.filter((e) => e.date === dateStr);
-          let status = "";
-          let content = `<span class="font-bold">${day}</span>`;
-
-          if (items.length > 0) {
-            const work = items.filter((e) => e.type === "work");
-
-            if (work.length > 0) {
-              status = work.every((e) => e.paid)
-                ? "status-paid"
-                : "status-pending";
-
-              content += `<span class="text-[8px] font-black">${work.reduce(
-                (s, e) => s + e.hours,
-                0,
-              )}h</span>`;
-            } else {
-              const reason = items[0].reason;
-              const icon = OFF_ICONS[reason] || "—";
-              status = "status-off";
-              content += `<span class="text-[10px]">${icon}</span>`;
-            }
-          }
-          const cell = document.createElement("div");
-          cell.className = `calendar-day ${status}`;
-          cell.innerHTML = content;
-          cell.onclick = () => openDayModal(dateStr);
-          grid.appendChild(cell);
-        }
-      }
-
-      // --- NAVEGACIÓN Y AUXILIARES ---
-      function switchTab(tab) {
-        document.getElementById("view-list").className =
-          tab === "list" ? "space-y-5" : "hidden";
-        document.getElementById("view-calendar").className =
-          tab === "calendar" ? "block" : "hidden";
-        document.getElementById("view-summary").className =
-          tab === "summary" ? "space-y-5" : "hidden";
-
-        document.getElementById("stats-panel").className =
-          tab === "list" ? "grid grid-cols-2 gap-3" : "hidden";
-
-        document.getElementById("tab-list").className =
-          tab === "list"
-            ? "flex-1 py-2 rounded-lg text-center tab-active shadow-sm"
-            : "flex-1 py-2 rounded-lg text-center text-slate-500";
-
-        document.getElementById("tab-calendar").className =
-          tab === "calendar"
-            ? "flex-1 py-2 rounded-lg text-center tab-active shadow-sm"
-            : "flex-1 py-2 rounded-lg text-center text-slate-500";
-
-        document.getElementById("tab-summary").className =
-          tab === "summary"
-            ? "flex-1 py-2 rounded-lg text-center tab-active shadow-sm"
-            : "flex-1 py-2 rounded-lg text-center text-slate-500";
-
-        if (tab === "summary") renderSummary();
-      }
-
-      function setFormMode(mode) {
-        formMode = mode;
-        document.getElementById("form-work").className =
-          mode === "work" ? "space-y-4" : "hidden";
-        document.getElementById("form-off").className =
-          mode === "off" ? "block" : "hidden";
-        document.getElementById("mode-work").className =
-          mode === "work"
-            ? "flex-1 text-xs font-bold py-2 rounded-lg bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-300 shadow-sm"
-            : "flex-1 text-xs font-bold py-2 rounded-lg text-slate-400";
-        document.getElementById("mode-off").className =
-          mode === "off"
-            ? "flex-1 text-xs font-bold py-2 rounded-lg bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-300 shadow-sm"
-            : "flex-1 text-xs font-bold py-2 rounded-lg text-slate-400";
-      }
-
-      function toggleSelect(id) {
-        if (selectedIds.has(id)) selectedIds.delete(id);
-        else selectedIds.add(id);
-        render();
-      }
-      function openPaymentModal(id) {
-        pendingPaidId = id;
-        document.getElementById("payment-modal").classList.remove("hidden");
-      }
-      // Modal
-      function confirmPayment(method) {
-        const e = entries.find((e) => e.id === pendingPaidId);
-        if (!e) return;
-
-        e.paid = true;
-        e.method = method; // cash o transfer
-
-        console.log("Pago confirmado:", e);
-
-        closePaymentModal();
-        render();
-      }
-
-      function closePaymentModal() {
-        document.getElementById("payment-modal").classList.add("hidden");
-      }
-      function openDayModal(d) {
-        selectedDateForModal = d;
-        document.getElementById("modal-date-title").textContent =
-          formatDateFull(d);
-        const content = document.getElementById("modal-content");
-        content.innerHTML = "";
-        const dayEntries = entries.filter((e) => e.date === d);
-        dayEntries.forEach((e) => {
-          content.innerHTML += `<div class="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl flex justify-between items-center border dark:border-dark-border">
-                    <div>
-                        <p class="text-sm font-bold dark:text-white">${
-                          e.type === "work" ? e.location : e.reason
-                        }</p>
-                        <p class="text-[10px] text-slate-500">${
-                          e.type === "work"
-                            ? e.hours + "h · " + e.hours * e.rate + "€"
-                            : "No laborable"
-                        }</p>
-                    </div>
-                    <button onclick="loadEntryForEdit('${
-                      e.id
-                    }')" class="text-purple-500 p-2"><i data-lucide="pencil" class="w-4 h-4"></i></button>
-                </div>`;
-        });
-        document.getElementById("day-modal").classList.remove("hidden");
-        lucide.createIcons();
-      }
-      function closeDayModal() {
-        document.getElementById("day-modal").classList.add("hidden");
-      }
-      function addEntryFromModal() {
-        document.getElementById("dateInput").value = selectedDateForModal;
-        closeDayModal();
-        switchTab("list");
-      }
-      function deleteEntry(id) {
-        if (confirm("¿Eliminar registro?")) {
-          entries = entries.filter((e) => e.id !== id);
-          render();
-        }
-      }
-      function togglePaidStatus(id) {
-        const e = entries.find((entry) => entry.id === id);
-        if (!e) return;
-
-        e.paid = !e.paid;
-        if (!e.paid) e.method = null;
-
-        console.log("Estado toggleado:", e); // 🔹 log aquí
-
-        // Guardar cambios en localStorage
-        localStorage.setItem("workEntries_v10", JSON.stringify(entries));
-
-        // Renderizar solo la lista y los stats
-        renderStats();
-        renderList();
-      }
-
-      function markBulkPaid(method) {
-        // Recorremos los IDs seleccionados
-        selectedIds.forEach((id) => {
-          const e = entries.find((entry) => entry.id === id);
-          if (e && !e.paid) {
-            e.paid = true; // Marcamos como cobrado
-            e.method = method; // Guardamos el método: 'cash' o 'transfer'
-          }
-        });
-
-        // Limpiamos la selección
-        selectedIds.clear();
-
-        // Actualizamos la UI
-        updateBulkUI();
-        render(); // renderiza lista, calendario, stats...
-      }
-      function updateBulkUI() {
-        document.getElementById("bulk-actions").className =
-          selectedIds.size > 0
-            ? "fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-slate-900 dark:bg-purple-900 text-white p-2 pl-4 rounded-full shadow-2xl z-30 flex items-center gap-3 w-max"
-            : "hidden";
-        document.getElementById("bulk-text").textContent =
-          `${selectedIds.size} seleccionados`;
-      }
-      function updateLocationList() {
-        const locs = [
-          ...new Set(
-            entries.filter((e) => e.type === "work").map((e) => e.location),
-          ),
-        ];
-        document.getElementById("locationsList").innerHTML = locs
-          .map((l) => `<option value="${l}">`)
-          .join("");
-      }
-      function changeMonth(v) {
-        currentMonth += v;
-        if (currentMonth > 11) {
-          currentMonth = 0;
-          currentYear++;
-        }
-        if (currentMonth < 0) {
-          currentMonth = 11;
-          currentYear--;
-        }
-        renderCalendar();
-      }
-      function renderStats() {
-        let pending = 0,
-          paid = 0;
-        entries.forEach((e) => {
-          if (e.type === "work") {
-            const total = e.hours * e.rate;
-            if (e.paid) paid += total;
-            else pending += total;
-          }
-        });
-        document.getElementById("moneyPending").textContent =
-          pending.toFixed(0) + "€";
-        document.getElementById("moneyPaid").textContent =
-          paid.toFixed(0) + "€";
-      }
-      function formatDateFull(s) {
-        return new Date(s).toLocaleDateString("es-ES", {
-          weekday: "short",
-          day: "numeric",
-          month: "short",
-        });
-      }
-
-      function renderSummary() {
-        const monthEntries = entries.filter((e) => {
-          const d = new Date(e.date);
-          return (
-            d.getMonth() === summaryMonth && d.getFullYear() === summaryYear
-          );
-        });
-
-        document.getElementById("summary-month-label").textContent = new Date(
-          summaryYear,
-          summaryMonth,
-        ).toLocaleDateString("es-ES", {
-          month: "long",
-          year: "numeric",
-        });
-
-        let workDays = new Set();
-        let offDays = {};
-        let hours = 0;
-        let total = 0;
-        let cash = 0;
-        let transfer = 0;
-        let pending = 0;
-
-        monthEntries.forEach((e) => {
-          if (e.type === "work") {
-            workDays.add(e.date);
-            hours += e.hours;
-            const amount = e.hours * e.rate;
-            total += amount;
-
-            if (e.paid) {
-              if (e.method === "cash") cash += amount;
-              else if (e.method === "transfer") transfer += amount;
-            } else {
-              pending += amount;
-            }
-          } else {
-            offDays[e.reason] = (offDays[e.reason] || 0) + 1;
-          }
-        });
-
-        document.getElementById("sum-work-days").textContent = workDays.size;
-        document.getElementById("sum-off-days").textContent = Object.values(
-          offDays,
-        ).reduce((a, b) => a + b, 0);
-        document.getElementById("sum-hours").textContent =
-          hours.toFixed(1) + "h";
-        document.getElementById("sum-total").textContent =
-          total.toFixed(0) + "€";
-
-        document.getElementById("sum-cash").textContent = cash.toFixed(0) + "€";
-        document.getElementById("sum-transfer").textContent =
-          transfer.toFixed(0) + "€";
-        document.getElementById("sum-pending").textContent =
-          pending.toFixed(0) + "€";
-
-        const offBox = document.getElementById("off-reasons");
-        offBox.innerHTML = "";
-        Object.entries(offDays).forEach(([reason, count]) => {
-          offBox.innerHTML += `<p>${
-            OFF_ICONS[reason] || "—"
-          } ${reason}: ${count}</p>`;
-        });
-
-        // ----- GRÁFICOS -----
-
-        if (moneyChart) moneyChart.destroy();
-        if (methodChart) methodChart.destroy();
-
-        moneyChart = new Chart(document.getElementById("moneyChart"), {
-          type: "doughnut",
-          data: {
-            labels: ["Cobrado", "Pendiente"],
-            datasets: [
-              {
-                data: [cash + transfer, pending],
-                backgroundColor: ["#22c55e", "#fb923c"],
-              },
-            ],
-          },
-        });
-
-        methodChart = new Chart(document.getElementById("methodChart"), {
-          type: "pie",
-          data: {
-            labels: ["Banco", "Efectivo"],
-            datasets: [
-              {
-                data: [transfer, cash],
-                backgroundColor: ["#3b82f6", "#22c55e"],
-              },
-            ],
-          },
-        });
-      }
-
-      function changeSummaryMonth(delta) {
-        summaryMonth += delta;
-
-        if (summaryMonth > 11) {
-          summaryMonth = 0;
-          summaryYear++;
-        }
-        if (summaryMonth < 0) {
-          summaryMonth = 11;
-          summaryYear--;
-        }
-
-        renderSummary();
-      }
-
-      // --- EXPORTAR DATOS ---
-      document.getElementById("export-btn").addEventListener("click", () => {
-        const dataStr = JSON.stringify(entries, null, 2);
-        const blob = new Blob([dataStr], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        const hoy = new Date().toISOString().slice(0, 10);
-        a.download = `mi-jornada-${hoy}.json`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-      });
-
-      // --- IMPORTAR DATOS ---
-      document.getElementById("import-btn").addEventListener("click", () => {
-        document.getElementById("import-input").click();
-      });
-
-      function validarEntradas(data) {
-        if (!Array.isArray(data)) return null;
-        const fecha = /^\d{4}-\d{2}-\d{2}$/;
-        const limpias = [];
-        for (const e of data) {
-          if (!e || typeof e !== "object") return null;
-          if (typeof e.date !== "string" || !fecha.test(e.date)) return null;
-          if (e.type !== "work" && e.type !== "off") return null;
-          if (e.type === "work" && !(Number(e.hours) > 0)) return null;
-          limpias.push({
-            ...e,
-            id: e.id ? String(e.id) : Date.now().toString() + limpias.length,
-          });
-        }
-        return limpias;
-      }
-
-      document
-        .getElementById("import-input")
-        .addEventListener("change", (e) => {
-          const input = e.target;
-          const file = input.files[0];
-          if (!file) return;
-
-          const reader = new FileReader();
-          reader.onload = (event) => {
-            try {
-              const validas = validarEntradas(JSON.parse(event.target.result));
-              if (!validas) {
-                alert("Archivo inválido ❌ No se ha cambiado nada.");
-                return;
-              }
-              const ok = confirm(
-                `Se van a reemplazar tus ${entries.length} registros actuales por ${validas.length} del archivo. ¿Continuar?`,
-              );
-              if (!ok) return;
-              entries = validas;
-              render();
-              alert("Datos importados correctamente ✅");
-            } catch (err) {
-              alert("Error al leer el archivo ❌");
-              console.error(err);
-            } finally {
-              input.value = "";
-            }
-          };
-          reader.readAsText(file);
-        });
-
-      // --- INICIO ---
-      document.getElementById("dateInput").valueAsDate = new Date();
-      initTheme();
-      render();
-
-      if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("sw.js");
-      }
-      if (navigator.storage && navigator.storage.persist) {
-        navigator.storage.persist();
-      }
-    </script>
-  </body>
+<head>
+<meta charset="UTF-8" />
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="icon-180.png" />
+<link rel="icon" href="favicon.ico" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="Mi jornada" />
+<meta name="theme-color" content="#7c3aed" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>I - Mi jornada</title>
+<script src="lib/lucide.min.js"></script>
+<script src="lib/chart.umd.js"></script>
+<style>
+:root{--bg:#f6f5fb;--card:#fff;--ink:#1e1b2e;--mut:#8b88a0;--line:#ece9f6;--pri:#7c3aed;--pri2:#a78bfa;--soft:#f1ecff;--ok:#16a34a;--okbg:#dcfce7;--warn:#ea580c;--warnbg:#ffedd5;--off:#eef0f5;--sh:0 2px 12px rgba(76,29,149,.07)}
+.dark{--bg:#0f172a;--card:#1e293b;--ink:#e2e8f0;--mut:#94a3b8;--line:#334155;--soft:#2b2250;--okbg:#064e3b;--warnbg:#7c2d12;--off:#273449;--sh:none}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;touch-action:manipulation;padding-bottom:calc(96px + env(safe-area-inset-bottom))}
+button,input,select{font:inherit;color:inherit}button{border:0;background:none;cursor:pointer}
+.hidden{display:none!important}.wrap{max-width:30rem;margin:0 auto;padding:0 16px}
+.top{position:sticky;top:0;z-index:20;background:var(--bg);padding:calc(12px + env(safe-area-inset-top)) 0 8px}
+.top .wrap{display:flex;align-items:center;justify-content:space-between}
+h1{margin:0;font-size:1.35rem;font-weight:800;letter-spacing:-.02em}
+.ib{width:40px;height:40px;border-radius:14px;background:var(--card);box-shadow:var(--sh);display:inline-flex;align-items:center;justify-content:center;margin-left:8px;color:var(--mut)}
+.ib svg{width:19px;height:19px}
+.hero{margin-top:8px;border-radius:24px;padding:20px;color:#fff;background:linear-gradient(135deg,#7c3aed,#a855f7 60%,#c084fc);box-shadow:0 10px 28px rgba(124,58,237,.3);display:flex;gap:16px}
+.hero div{flex:1}.hero small{display:block;opacity:.8;font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.hero b{font-size:1.9rem;font-weight:800;letter-spacing:-.02em}.hero .sep{flex:0 0 1px;background:rgba(255,255,255,.25)}
+.day h4{margin:20px 4px 8px;font-size:.72rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--mut)}
+.card{background:var(--card);border-radius:20px;box-shadow:var(--sh);border:1.5px solid transparent;padding:14px}
+.card.sel{border-color:var(--pri)}.row{display:flex;align-items:center;gap:10px}.sp{justify-content:space-between}.grow{flex:1;min-width:0}
+.e{display:flex;gap:10px;align-items:center;margin-bottom:8px}
+.big{font-weight:800;font-size:1.05rem}.mut{color:var(--mut);font-size:.78rem}.amt{font-weight:800;color:var(--pri);font-size:1.05rem}
+.dark .amt{color:var(--pri2)}
+.pill{display:inline-block;font-size:.65rem;font-weight:800;letter-spacing:.04em;padding:2px 8px;border-radius:99px;text-transform:uppercase}
+.pill.p{background:var(--warnbg);color:var(--warn)}.pill.c{background:var(--okbg);color:var(--ok)}
+.loc{display:inline-flex;align-items:center;gap:3px;color:var(--mut);font-size:.72rem;margin-top:2px}.loc svg{width:11px;height:11px}
+.tm{font-size:.68rem;font-weight:700;background:var(--soft);color:var(--pri);padding:1px 7px;border-radius:8px;margin-left:6px;vertical-align:middle}
+.dark .tm{color:var(--pri2)}
+.off{background:var(--off);box-shadow:none;border:1.5px dashed var(--line)}
+.sm{padding:8px;border-radius:12px;color:var(--mut)}.sm svg{width:16px;height:16px}.sm.pay{background:var(--soft);color:var(--pri)}.sm.del{color:#f87171}
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--card);border-top:1px solid var(--line);padding:6px 12px calc(6px + env(safe-area-inset-bottom))}
+.tabbar .wrap{display:flex;padding:0}.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px;font-size:.68rem;font-weight:700;color:var(--mut)}
+.tab svg{width:22px;height:22px}.tab.on{color:var(--pri)}.dark .tab.on{color:var(--pri2)}
+.fab{position:fixed;right:max(18px,calc(50% - 15rem + 18px));bottom:calc(84px + env(safe-area-inset-bottom));z-index:25;width:58px;height:58px;border-radius:20px;background:var(--pri);color:#fff;box-shadow:0 8px 22px rgba(124,58,237,.45);display:flex;align-items:center;justify-content:center}
+.fab svg{width:26px;height:26px}
+.bulk{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom));z-index:35;background:#1e1b2e;color:#fff;border-radius:99px;padding:8px 8px 8px 18px;display:flex;align-items:center;gap:10px;box-shadow:0 10px 30px rgba(0,0,0,.35);font-size:.8rem;font-weight:700;white-space:nowrap}
+.bulk button{padding:9px 14px;border-radius:99px;font-size:.7rem;font-weight:800;color:#fff}
+.ov{position:fixed;inset:0;z-index:50;background:rgba(15,10,35,.6);backdrop-filter:blur(3px);display:flex;align-items:flex-end;justify-content:center}
+.ov.mid{align-items:center;padding:20px}
+.sheet{background:var(--card);width:100%;max-width:30rem;border-radius:28px 28px 0 0;padding:18px 18px calc(22px + env(safe-area-inset-bottom));max-height:92vh;overflow-y:auto;animation:up .22s ease-out}
+.mid .sheet{border-radius:28px;max-width:22rem;padding:22px}
+@keyframes up{from{transform:translateY(40px);opacity:0}}
+.sheet h3{margin:0 0 14px;font-size:1.1rem}
+.seg{display:flex;background:var(--bg);border-radius:14px;padding:4px;margin-bottom:12px}
+.seg button{flex:1;padding:9px;border-radius:11px;font-size:.78rem;font-weight:800;color:var(--mut)}
+.seg button.on{background:var(--card);color:var(--pri);box-shadow:var(--sh)}
+.dark .seg button.on{background:#334155;color:var(--pri2)}
+input,select{width:100%;background:var(--bg);border:1.5px solid transparent;border-radius:14px;padding:12px 14px;outline:0;margin-bottom:10px;min-width:0}
+input:focus{border-color:var(--pri)}.two{display:flex;gap:10px}.two>*{flex:1}
+label.l{display:block;font-size:.68rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);margin:2px 4px 5px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.chip{padding:9px 13px;border-radius:99px;background:var(--bg);font-weight:700;font-size:.85rem;border:1.5px solid transparent}
+.chip.on{background:var(--soft);border-color:var(--pri);color:var(--pri)}.dark .chip.on{color:var(--pri2)}
+.btn{width:100%;padding:14px;border-radius:16px;background:var(--pri);color:#fff;font-weight:800;box-shadow:0 6px 16px rgba(124,58,237,.3)}
+.btn.b{background:#2563eb;box-shadow:none}.btn.g{background:#16a34a;box-shadow:none}.btn.s{background:var(--soft);color:var(--pri);box-shadow:none}
+.link{color:var(--mut);font-size:.8rem;font-weight:700;padding:8px;width:100%}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}.cal .w{text-align:center;font-size:.65rem;font-weight:800;color:var(--mut)}
+.cd{aspect-ratio:.9;border-radius:12px;background:var(--bg);display:flex;flex-direction:column;align-items:center;padding-top:5px;font-size:.8rem;font-weight:700}
+.cd small{font-size:.6rem;font-weight:800}.cd.p{background:var(--warnbg);color:var(--warn)}.cd.c{background:var(--okbg);color:var(--ok)}.cd.o{background:var(--off);color:var(--mut)}
+.cd.today{outline:2px solid var(--pri)}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}.g2 .big{font-size:1.5rem;display:block}
+.cr{display:flex;gap:8px;align-items:center;margin-bottom:8px}.cr input{margin:0}.cr .em{width:56px;text-align:center;flex:none}
+.hd{display:flex;align-items:center;justify-content:space-between;margin:14px 0 10px}.hd h2{margin:0;font-size:1.05rem;text-transform:capitalize}
+.empty{text-align:center;color:var(--mut);padding:40px 10px}
+canvas{max-height:220px}
+</style>
+</head>
+<body>
+<div class="top"><div class="wrap"><h1>Mi jornada</h1><div>
+<button class="ib" onclick="openCats()" aria-label="Categorías"><i data-lucide="tags"></i></button>
+<button class="ib" onclick="toggleDarkMode()" aria-label="Tema"><i id="theme-icon" data-lucide="moon"></i></button></div></div></div>
+<main class="wrap">
+<section id="v-list">
+ <div class="hero"><div><small>Pendiente</small><b id="moneyPending">0€</b></div><span class="sep"></span><div><small>Cobrado</small><b id="moneyPaid">0€</b></div></div>
+ <div id="hist"></div>
+</section>
+<section id="v-cal" class="hidden">
+ <div class="hd"><button class="ib" onclick="changeMonth(-1)"><i data-lucide="chevron-left"></i></button><h2 id="monthLabel"></h2><button class="ib" onclick="changeMonth(1)"><i data-lucide="chevron-right"></i></button></div>
+ <div class="card"><div class="cal" style="margin-bottom:6px"><div class="w">L</div><div class="w">M</div><div class="w">X</div><div class="w">J</div><div class="w">V</div><div class="w">S</div><div class="w">D</div></div><div id="calDays" class="cal"></div></div>
+</section>
+<section id="v-sum" class="hidden">
+ <div class="two" style="margin-top:12px"><button class="btn b" id="export-btn">Exportar</button><button class="btn g" id="import-btn">Cargar</button></div>
+ <input type="file" id="import-input" accept=".json" class="hidden" style="display:none" />
+ <div class="hd"><button class="ib" onclick="changeSummaryMonth(-1)"><i data-lucide="chevron-left"></i></button><h2 id="sumLabel"></h2><button class="ib" onclick="changeSummaryMonth(1)"><i data-lucide="chevron-right"></i></button></div>
+ <div class="g2">
+  <div class="card"><span class="mut">Días trabajados</span><b class="big" id="s-days" style="color:var(--pri)">0</b></div>
+  <div class="card"><span class="mut">Días libres</span><b class="big" id="s-off">0</b></div>
+  <div class="card"><span class="mut">Horas</span><b class="big" id="s-hours">0h</b></div>
+  <div class="card"><span class="mut">Total generado</span><b class="big" id="s-total" style="color:var(--ok)">0€</b></div>
+ </div>
+ <div class="card" style="margin-bottom:10px"><b>Descansos</b><div id="s-reasons" class="mut" style="margin-top:6px">—</div></div>
+ <div class="card" style="margin-bottom:10px"><b>Cobros</b><div class="mut" style="margin-top:6px">💵 Efectivo: <span id="s-cash">0€</span><br>🏦 Banco: <span id="s-bank">0€</span><br>⏳ Pendiente: <span id="s-pend">0€</span></div></div>
+ <div class="card" style="margin-bottom:10px"><b>Dinero</b><canvas id="moneyChart"></canvas></div>
+ <div class="card"><b>Métodos de cobro</b><canvas id="methodChart"></canvas></div>
+</section>
+</main>
+<button id="fab" class="fab" onclick="openSheet()" aria-label="Nuevo registro"><i data-lucide="plus"></i></button>
+<div id="bulk" class="bulk hidden"><span id="bulk-text"></span><button style="background:#2563eb" onclick="markBulkPaid('transfer')">BANCO</button><button style="background:#16a34a" onclick="markBulkPaid('cash')">EFECTIVO</button></div>
+<nav class="tabbar"><div class="wrap">
+<button class="tab on" id="t-list" onclick="switchTab('list')"><i data-lucide="list"></i>Registro</button>
+<button class="tab" id="t-cal" onclick="switchTab('cal')"><i data-lucide="calendar-days"></i>Calendario</button>
+<button class="tab" id="t-sum" onclick="switchTab('sum')"><i data-lucide="chart-pie"></i>Resumen</button></div></nav>
+
+<div id="sheet" class="ov hidden" onclick="if(event.target===this)closeSheet()"><div class="sheet">
+ <h3 id="sheet-title">Nuevo registro</h3>
+ <div class="seg"><button id="m-work" class="on" onclick="setFormMode('work')">TRABAJO</button><button id="m-off" onclick="setFormMode('off')">DESCANSO</button></div>
+ <label class="l">Fecha</label><input type="date" id="dateInput" />
+ <div id="f-work">
+  <div class="seg"><button id="tm-total" class="on" onclick="setTime('total')">Horas totales</button><button id="tm-range" onclick="setTime('range')">Horario</button></div>
+  <input type="number" id="hoursInput" placeholder="Horas (ej. 7.5)" step="0.5" inputmode="decimal" />
+  <div id="f-range" class="hidden"><div class="two"><input type="time" id="startTime" onchange="calcHours()" /><input type="time" id="endTime" onchange="calcHours()" /></div><div class="mut" style="text-align:center;margin:-2px 0 10px" id="calc">0.00 horas</div></div>
+  <div class="two"><div><label class="l">Precio/hora</label><input type="number" id="rateInput" value="10" inputmode="decimal" /></div><div style="flex:1.6"><label class="l">Ubicación (opcional)</label><input type="text" id="locationInput" list="locs" placeholder="📍 Dónde" /></div></div>
+  <datalist id="locs"></datalist>
+ </div>
+ <div id="f-off" class="hidden"><label class="l">Motivo</label><div id="chips" class="chips"></div><button class="link" onclick="openCats()">Gestionar categorías</button></div>
+ <button class="btn" id="save-btn" onclick="addEntry()">Guardar registro</button>
+ <button class="link" onclick="closeSheet()">Cancelar</button>
+</div></div>
+
+<div id="cats" class="ov mid hidden" onclick="if(event.target===this)closeCats()"><div class="sheet">
+ <h3>Categorías de descanso</h3><div id="cat-list"></div>
+ <label class="l" style="margin-top:12px">Nueva categoría</label>
+ <div class="cr"><input class="em" id="newEmoji" placeholder="🙂" maxlength="4" /><input id="newName" placeholder="Nombre" /></div>
+ <button class="btn s" onclick="addCat()">Añadir</button><button class="link" onclick="closeCats()">Cerrar</button>
+</div></div>
+
+<div id="pay" class="ov mid hidden" onclick="if(event.target===this)closePay()"><div class="sheet">
+ <h3 style="text-align:center">Marcar como cobrado</h3>
+ <div class="two"><button class="btn b" onclick="confirmPayment('transfer')">Banco 🏦</button><button class="btn g" onclick="confirmPayment('cash')">Mano 💵</button></div>
+ <button class="link" onclick="closePay()">Cancelar</button>
+</div></div>
+
+<div id="day" class="ov mid hidden" onclick="if(event.target===this)closeDay()"><div class="sheet">
+ <h3 id="day-title" style="text-transform:capitalize"></h3><div id="day-content"></div>
+ <button class="btn s" onclick="newFromDay()">Nuevo registro este día</button><button class="link" onclick="closeDay()">Cerrar</button>
+</div></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const load=(k,d)=>{try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch{return d}};
+const DEF_CATS=[["Descanso","😴"],["Festivo","🎉"],["Lluvia","🌧️"],["Enfermedad","🤒"],["Vacaciones","🏖️"],["Permiso","📝"],["Cita médica","🩺"]].map(([name,emoji])=>({name,emoji}));
+let entries=load("workEntries_v10",[]);
+let cats=load("offCats_v1",null);if(!Array.isArray(cats)||!cats.length)cats=DEF_CATS.map(c=>({...c}));
+let sel=new Set(),curM=new Date().getMonth(),curY=new Date().getFullYear(),sumM=curM,sumY=curY;
+let formMode="work",tmode="total",editingId=null,payId=null,dayDate=null,reason=cats[0].name,charts=[],tab="list";
+const pad=n=>String(n).padStart(2,"0");
+const today=()=>{const d=new Date();return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`};
+const icon=r=>(cats.find(c=>c.name===r)||{}).emoji||"🗓️";
+const fmtDay=s=>new Date(s+"T12:00").toLocaleDateString("es-ES",{weekday:"long",day:"numeric",month:"long"});
+const money=n=>(Math.round(n*100)/100).toString().replace(".",",")+"€";
+function ensureCats(){entries.forEach(e=>{if(e.type==="off"&&e.reason&&!cats.some(c=>c.name===e.reason))cats.push({name:e.reason,emoji:"🗓️"})})}
+function save(){localStorage.setItem("workEntries_v10",JSON.stringify(entries));localStorage.setItem("offCats_v1",JSON.stringify(cats))}
+function ic(){lucide.createIcons()}
+
+// Tema
+function initTheme(){const t=localStorage.getItem("theme");if(t==="dark"||(!t&&matchMedia("(prefers-color-scheme: dark)").matches))document.documentElement.classList.add("dark");themeIcon()}
+function toggleDarkMode(){const d=document.documentElement.classList.toggle("dark");localStorage.setItem("theme",d?"dark":"light");themeIcon();if(tab==="sum")renderSummary()}
+function themeIcon(){const i=$("theme-icon").parentElement;i.innerHTML=`<i id="theme-icon" data-lucide="${document.documentElement.classList.contains("dark")?"sun":"moon"}"></i>`;ic()}
+
+function render(){save();renderStats();renderList();renderCalendar();updateBulk();
+ $("locs").innerHTML=[...new Set(entries.filter(e=>e.type==="work"&&e.location).map(e=>e.location))].map(l=>`<option value="${esc(l)}">`).join("");ic()}
+
+function renderStats(){let p=0,c=0;entries.forEach(e=>{if(e.type==="work"){const t=e.hours*e.rate;e.paid?c+=t:p+=t}});$("moneyPending").textContent=money(p);$("moneyPaid").textContent=money(c)}
+
+function renderList(){
+ const g={};entries.forEach(e=>(g[e.date]=g[e.date]||[]).push(e));
+ const dates=Object.keys(g).sort().reverse();
+ if(!dates.length){$("hist").innerHTML=`<div class="empty">Aún no hay registros.<br>Pulsa + para añadir el primero.</div>`;return}
+ $("hist").innerHTML=dates.map(d=>`<div class="day"><h4>${fmtDay(d)}</h4>`+g[d].map(e=>{
+  if(e.type==="off")return `<div class="card off e"><div class="grow big" style="font-size:.95rem">${icon(e.reason)} ${esc(e.reason)}</div>
+   <button class="sm" onclick="editEntry('${e.id}')"><i data-lucide="pencil"></i></button><button class="sm del" onclick="deleteEntry('${e.id}')"><i data-lucide="trash-2"></i></button></div>`;
+  const st=e.paid?`<span class="pill c">Cobrado${e.method==="cash"?" · 💵":e.method==="transfer"?" · 🏦":""}</span>`:`<span class="pill p">Pendiente</span>`;
+  return `<div class="card e ${sel.has(e.id)?"sel":""}" onclick="toggleSelect('${e.id}')"><div class="grow">
+   <div class="row sp"><span class="big">${e.hours}h${e.timeRange?`<span class="tm">${esc(e.timeRange)}</span>`:""}</span><span class="amt">${money(e.hours*e.rate)}</span></div>
+   <div class="row sp" style="margin-top:3px"><span class="mut">${e.rate}€/h</span>${st}</div>
+   ${e.location?`<span class="loc"><i data-lucide="map-pin"></i>${esc(e.location)}</span>`:""}</div>
+   <div class="row" style="gap:0;flex-direction:column" onclick="event.stopPropagation()">
+   <div class="row" style="gap:0"><button class="sm" onclick="editEntry('${e.id}')"><i data-lucide="pencil"></i></button>
+   ${e.paid?`<button class="sm" onclick="togglePaid('${e.id}')"><i data-lucide="rotate-ccw"></i></button>`:`<button class="sm pay" onclick="openPay('${e.id}')"><i data-lucide="wallet"></i></button>`}
+   <button class="sm del" onclick="deleteEntry('${e.id}')"><i data-lucide="trash-2"></i></button></div></div></div>`}).join("")+`</div>`).join("");
+}
+
+function renderCalendar(){
+ $("monthLabel").textContent=new Date(curY,curM,1).toLocaleDateString("es-ES",{month:"long",year:"numeric"});
+ const start=(new Date(curY,curM,1).getDay()+6)%7,n=new Date(curY,curM+1,0).getDate();let h="<div></div>".repeat(start);
+ for(let d=1;d<=n;d++){const ds=`${curY}-${pad(curM+1)}-${pad(d)}`,it=entries.filter(e=>e.date===ds),w=it.filter(e=>e.type==="work");
+  let cls="",sub="";
+  if(w.length){cls=w.every(e=>e.paid)?"c":"p";sub=`<small>${w.reduce((s,e)=>s+e.hours,0)}h</small>`}
+  else if(it.length){cls="o";sub=`<small style="font-size:.8rem">${icon(it[0].reason)}</small>`}
+  h+=`<div class="cd ${cls} ${ds===today()?"today":""}" onclick="openDay('${ds}')">${d}${sub}</div>`}
+ $("calDays").innerHTML=h}
+function changeMonth(v){curM+=v;if(curM>11){curM=0;curY++}if(curM<0){curM=11;curY--}renderCalendar();ic()}
+
+function switchTab(t){tab=t;["list","cal","sum"].forEach(x=>{$("v-"+x).classList.toggle("hidden",x!==t);$("t-"+x).classList.toggle("on",x===t)});
+ $("fab").classList.toggle("hidden",t==="sum");if(t==="sum")renderSummary();ic();window.scrollTo(0,0)}
+
+// Formulario
+function setFormMode(m){formMode=m;$("f-work").classList.toggle("hidden",m!=="work");$("f-off").classList.toggle("hidden",m!=="off");$("m-work").classList.toggle("on",m==="work");$("m-off").classList.toggle("on",m==="off")}
+function setTime(m){tmode=m;$("f-range").classList.toggle("hidden",m!=="range");$("hoursInput").classList.toggle("hidden",m!=="total");$("tm-total").classList.toggle("on",m==="total");$("tm-range").classList.toggle("on",m==="range")}
+function calcHours(){const s=$("startTime").value,e=$("endTime").value;if(!s||!e)return 0;let d=(new Date("2000-01-01T"+e)-new Date("2000-01-01T"+s))/36e5;if(d<0)d+=24;$("calc").textContent=d.toFixed(2)+" horas";return d}
+function renderChips(){if(!cats.some(c=>c.name===reason))reason=cats[0]?cats[0].name:"";
+ $("chips").innerHTML=cats.map((c,i)=>`<button class="chip ${c.name===reason?"on":""}" onclick="reason=cats[${i}].name;renderChips()">${esc(c.emoji)} ${esc(c.name)}</button>`).join("")||`<span class="mut">Añade una categoría primero</span>`}
+function openSheet(){$("sheet").classList.remove("hidden");if(!editingId){$("dateInput").value=$("dateInput").value||today()}renderChips();ic()}
+function closeSheet(){$("sheet").classList.add("hidden");resetForm()}
+function resetForm(){editingId=null;$("sheet-title").textContent="Nuevo registro";$("save-btn").textContent="Guardar registro";
+ ["hoursInput","startTime","endTime","locationInput"].forEach(i=>$(i).value="");$("calc").textContent="0.00 horas";$("dateInput").value=today();setFormMode("work");setTime("total")}
+function addEntry(){
+ const date=$("dateInput").value;if(!date)return alert("Elige una fecha");let e={date};
+ if(formMode==="work"){const hours=tmode==="total"?parseFloat($("hoursInput").value):calcHours();
+  if(!(hours>0))return alert("Indica las horas trabajadas");
+  e={...e,type:"work",location:$("locationInput").value.trim(),rate:parseFloat($("rateInput").value)||10,hours,
+   timeRange:tmode==="range"?`${$("startTime").value} - ${$("endTime").value}`:null,paid:false,method:null}}
+ else{if(!reason)return alert("Elige o crea una categoría");e={...e,type:"off",reason}}
+ if(editingId){const i=entries.findIndex(x=>x.id===editingId);e.id=editingId;if(e.type==="work"&&entries[i].type==="work"){e.paid=entries[i].paid;e.method=entries[i].method}entries[i]=e}
+ else{e.id=Date.now().toString();entries.push(e)}
+ closeSheet();render()}
+function editEntry(id){const e=entries.find(x=>x.id===id);if(!e)return;closeDay();editingId=id;openSheet();
+ $("sheet-title").textContent="Editando registro";$("save-btn").textContent="Guardar cambios";$("dateInput").value=e.date;setFormMode(e.type);
+ if(e.type==="work"){$("locationInput").value=e.location||"";$("rateInput").value=e.rate;
+  if(e.timeRange){setTime("range");const[s,t]=e.timeRange.split(" - ");$("startTime").value=s;$("endTime").value=t;calcHours()}else{setTime("total");$("hoursInput").value=e.hours}}
+ else{reason=e.reason;renderChips()}}
+function deleteEntry(id){if(confirm("¿Eliminar este registro?")){entries=entries.filter(e=>e.id!==id);sel.delete(id);render()}}
+
+// Cobros
+function openPay(id){payId=id;$("pay").classList.remove("hidden")}function closePay(){$("pay").classList.add("hidden")}
+function confirmPayment(m){const e=entries.find(x=>x.id===payId);if(e){e.paid=true;e.method=m}closePay();render()}
+function togglePaid(id){const e=entries.find(x=>x.id===id);if(!e)return;e.paid=!e.paid;if(!e.paid)e.method=null;render()}
+function toggleSelect(id){sel.has(id)?sel.delete(id):sel.add(id);renderList();updateBulk();ic()}
+function markBulkPaid(m){sel.forEach(id=>{const e=entries.find(x=>x.id===id);if(e&&e.type==="work"&&!e.paid){e.paid=true;e.method=m}});sel.clear();render()}
+function updateBulk(){$("bulk").classList.toggle("hidden",!sel.size);$("bulk-text").textContent=`${sel.size} seleccionados`}
+
+// Día
+function openDay(d){dayDate=d;$("day-title").textContent=fmtDay(d);const it=entries.filter(e=>e.date===d);
+ $("day-content").innerHTML=it.map(e=>`<div class="card e" style="background:var(--bg);box-shadow:none"><div class="grow"><b>${e.type==="work"?e.hours+"h · "+money(e.hours*e.rate):icon(e.reason)+" "+esc(e.reason)}</b>${e.type==="work"&&e.location?`<div class="mut">${esc(e.location)}</div>`:""}</div><button class="sm" onclick="editEntry('${e.id}')"><i data-lucide="pencil"></i></button></div>`).join("")||`<div class="mut" style="text-align:center;margin-bottom:12px">Sin registros</div>`;
+ $("day").classList.remove("hidden");ic()}
+function closeDay(){$("day").classList.add("hidden")}
+function newFromDay(){const d=dayDate;closeDay();resetForm();$("dateInput").value=d;openSheet()}
+
+// Categorías
+function openCats(){renderCats();$("cats").classList.remove("hidden");ic()}
+function closeCats(){$("cats").classList.add("hidden");renderChips();render()}
+function renderCats(){$("cat-list").innerHTML=cats.map((c,i)=>`<div class="cr"><input class="em" value="${esc(c.emoji)}" maxlength="4" onchange="editCat(${i},'emoji',this.value)"><input value="${esc(c.name)}" onchange="editCat(${i},'name',this.value)"><button class="sm del" onclick="delCat(${i})"><i data-lucide="trash-2"></i></button></div>`).join("")||`<div class="mut">No hay categorías.</div>`;ic()}
+function editCat(i,f,v){v=v.trim();if(!v){renderCats();return}
+ if(f==="name"){if(cats.some((c,j)=>j!==i&&c.name.toLowerCase()===v.toLowerCase())){alert("Ya existe una categoría con ese nombre");renderCats();return}
+  const old=cats[i].name;entries.forEach(e=>{if(e.type==="off"&&e.reason===old)e.reason=v});if(reason===old)reason=v}
+ cats[i][f]=v;save();renderCats()}
+function delCat(i){const n=entries.filter(e=>e.type==="off"&&e.reason===cats[i].name).length;
+ if(!confirm(n?`Hay ${n} días con "${cats[i].name}". Se conservarán en el historial con su nombre. ¿Eliminar la categoría?`:`¿Eliminar "${cats[i].name}"?`))return;
+ cats.splice(i,1);save();renderCats()}
+function addCat(){const n=$("newName").value.trim(),em=$("newEmoji").value.trim()||"🗓️";if(!n)return;
+ if(cats.some(c=>c.name.toLowerCase()===n.toLowerCase()))return alert("Ya existe esa categoría");
+ cats.push({name:n,emoji:em});$("newName").value="";$("newEmoji").value="";save();renderCats()}
+
+// Resumen
+function changeSummaryMonth(d){sumM+=d;if(sumM>11){sumM=0;sumY++}if(sumM<0){sumM=11;sumY--}renderSummary()}
+function renderSummary(){
+ $("sumLabel").textContent=new Date(sumY,sumM,1).toLocaleDateString("es-ES",{month:"long",year:"numeric"});
+ const pre=`${sumY}-${pad(sumM+1)}`,me=entries.filter(e=>e.date.slice(0,7)===pre);
+ const days=new Set(),off={};let h=0,t=0,cash=0,bank=0,pend=0;
+ me.forEach(e=>{if(e.type==="work"){days.add(e.date);h+=e.hours;const a=e.hours*e.rate;t+=a;if(e.paid){e.method==="cash"?cash+=a:e.method==="transfer"?bank+=a:0}else pend+=a}else off[e.reason]=(off[e.reason]||0)+1});
+ $("s-days").textContent=days.size;$("s-off").textContent=Object.values(off).reduce((a,b)=>a+b,0);$("s-hours").textContent=h.toFixed(1)+"h";$("s-total").textContent=money(t);
+ $("s-cash").textContent=money(cash);$("s-bank").textContent=money(bank);$("s-pend").textContent=money(pend);
+ $("s-reasons").innerHTML=Object.entries(off).map(([r,n])=>`${icon(r)} ${esc(r)}: ${n}`).join("<br>")||"—";
+ charts.forEach(c=>c.destroy());Chart.defaults.color=getComputedStyle(document.body).color;
+ const mk=(id,type,labels,data,colors)=>new Chart($(id),{type,data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:0}]},options:{plugins:{legend:{position:"bottom"}}}});
+ charts=[mk("moneyChart","doughnut",["Cobrado","Pendiente"],[cash+bank,pend],["#22c55e","#fb923c"]),mk("methodChart","doughnut",["Banco","Efectivo"],[bank,cash],["#3b82f6","#22c55e"])]}
+
+// Exportar / importar
+$("export-btn").addEventListener("click",()=>{const url=URL.createObjectURL(new Blob([JSON.stringify(entries,null,2)],{type:"application/json"}));
+ const a=document.createElement("a");a.href=url;a.download=`mi-jornada-${today()}.json`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)});
+$("import-btn").addEventListener("click",()=>$("import-input").click());
+function validarEntradas(d){if(!Array.isArray(d))return null;const re=/^\d{4}-\d{2}-\d{2}$/,out=[];
+ for(const e of d){if(!e||typeof e!=="object"||typeof e.date!=="string"||!re.test(e.date))return null;if(e.type!=="work"&&e.type!=="off")return null;if(e.type==="work"&&!(Number(e.hours)>0))return null;
+  out.push({...e,id:e.id?String(e.id):Date.now().toString()+out.length})}return out}
+$("import-input").addEventListener("change",ev=>{const inp=ev.target,f=inp.files[0];if(!f)return;const r=new FileReader();
+ r.onload=x=>{try{const v=validarEntradas(JSON.parse(x.target.result));if(!v)return alert("Archivo inválido ❌ No se ha cambiado nada.");
+  if(!confirm(`Se van a reemplazar tus ${entries.length} registros actuales por ${v.length} del archivo. ¿Continuar?`))return;
+  entries=v;ensureCats();render();alert("Datos importados correctamente ✅")}catch(err){alert("Error al leer el archivo ❌")}finally{inp.value=""}};r.readAsText(f)});
+
+// Inicio
+ensureCats();initTheme();$("dateInput").value=today();render();switchTab("list");
+if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js");
+if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();
+</script>
+</body>
 </html>

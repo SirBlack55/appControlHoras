@@ -1,11 +1,10 @@
-const CACHE_VERSION = "v3";
+const CACHE_VERSION = "v4";
 const CACHE_NAME = `jornada-${CACHE_VERSION}`;
 
 const FILES_TO_CACHE = [
   "./",
   "index.html",
   "manifest.json",
-  "tailwind.css",
   "lib/lucide.min.js",
   "lib/chart.umd.js",
   "favicon.ico",
