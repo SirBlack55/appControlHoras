@@ -11,38 +11,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>I - Mi jornada</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
-      tailwind.config = {
-        darkMode: "class",
-        theme: {
-          extend: {
-            colors: {
-              purple: {
-                50: "#f5f3ff",
-                100: "#ede9fe",
-                200: "#ddd6fe",
-                300: "#c4b5fd",
-                400: "#a78bfa",
-                500: "#8b5cf6",
-                600: "#7c3aed",
-                700: "#6d28d9",
-                800: "#5b21b6",
-                900: "#4c1d95",
-                950: "#2e1065",
-              },
-              dark: {
-                bg: "#0f172a",
-                card: "#1e293b",
-                border: "#334155",
-              },
-            },
-          },
-        },
-      };
-    </script>
+    <link rel="stylesheet" href="tailwind.css" />
+    <script src="lib/lucide.min.js"></script>
+    <script src="lib/chart.umd.js"></script>
     <style>
       body {
         transition:
@@ -1309,16 +1280,17 @@
 
       // --- EXPORTAR DATOS ---
       document.getElementById("export-btn").addEventListener("click", () => {
-        const dataStr = JSON.stringify(entries, null, 2); // prettier
+        const dataStr = JSON.stringify(entries, null, 2);
         const blob = new Blob([dataStr], { type: "application/json" });
         const url = URL.createObjectURL(blob);
-
         const a = document.createElement("a");
         a.href = url;
-        a.download = "mi-jornada.json"; // nombre del archivo
+        const hoy = new Date().toISOString().slice(0, 10);
+        a.download = `mi-jornada-${hoy}.json`;
+        document.body.appendChild(a);
         a.click();
-
-        URL.revokeObjectURL(url); // liberar memoria
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
       });
 
       // --- IMPORTAR DATOS ---
@@ -1326,26 +1298,50 @@
         document.getElementById("import-input").click();
       });
 
+      function validarEntradas(data) {
+        if (!Array.isArray(data)) return null;
+        const fecha = /^\d{4}-\d{2}-\d{2}$/;
+        const limpias = [];
+        for (const e of data) {
+          if (!e || typeof e !== "object") return null;
+          if (typeof e.date !== "string" || !fecha.test(e.date)) return null;
+          if (e.type !== "work" && e.type !== "off") return null;
+          if (e.type === "work" && !(Number(e.hours) > 0)) return null;
+          limpias.push({
+            ...e,
+            id: e.id ? String(e.id) : Date.now().toString() + limpias.length,
+          });
+        }
+        return limpias;
+      }
+
       document
         .getElementById("import-input")
         .addEventListener("change", (e) => {
-          const file = e.target.files[0];
+          const input = e.target;
+          const file = input.files[0];
           if (!file) return;
 
           const reader = new FileReader();
           reader.onload = (event) => {
             try {
-              const imported = JSON.parse(event.target.result);
-              if (Array.isArray(imported)) {
-                entries = imported;
-                render();
-                alert("Datos importados correctamente ✅");
-              } else {
-                alert("Archivo inválido ❌");
+              const validas = validarEntradas(JSON.parse(event.target.result));
+              if (!validas) {
+                alert("Archivo inválido ❌ No se ha cambiado nada.");
+                return;
               }
+              const ok = confirm(
+                `Se van a reemplazar tus ${entries.length} registros actuales por ${validas.length} del archivo. ¿Continuar?`,
+              );
+              if (!ok) return;
+              entries = validas;
+              render();
+              alert("Datos importados correctamente ✅");
             } catch (err) {
               alert("Error al leer el archivo ❌");
               console.error(err);
+            } finally {
+              input.value = "";
             }
           };
           reader.readAsText(file);
@@ -1358,6 +1354,9 @@
 
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("sw.js");
+      }
+      if (navigator.storage && navigator.storage.persist) {
+        navigator.storage.persist();
       }
     </script>
   </body>
