@@ -9,7 +9,7 @@
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-title" content="Mi jornada" />
 <meta name="theme-color" content="#7c3aed" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 <title>I - Mi jornada</title>
 <script src="lib/lucide.min.js"></script>
 <script src="lib/chart.umd.js"></script>
@@ -58,7 +58,7 @@ h1{margin:0;font-size:1.35rem;font-weight:800;letter-spacing:-.02em}
 .seg button{flex:1;padding:9px;border-radius:11px;font-size:.78rem;font-weight:800;color:var(--mut)}
 .seg button.on{background:var(--card);color:var(--pri);box-shadow:var(--sh)}
 .dark .seg button.on{background:#334155;color:var(--pri2)}
-input,select{width:100%;background:var(--bg);border:1.5px solid transparent;border-radius:14px;padding:12px 14px;outline:0;margin-bottom:10px;min-width:0}
+input,select{font-size:16px;width:100%;background:var(--bg);border:1.5px solid transparent;border-radius:14px;padding:12px 14px;outline:0;margin-bottom:10px;min-width:0}
 input:focus{border-color:var(--pri)}.two{display:flex;gap:10px}.two>*{flex:1}
 label.l{display:block;font-size:.68rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);margin:2px 4px 5px}
 .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
@@ -290,6 +290,10 @@ $("import-input").addEventListener("change",ev=>{const inp=ev.target,f=inp.files
  r.onload=x=>{try{const v=validarEntradas(JSON.parse(x.target.result));if(!v)return alert("Archivo inválido ❌ No se ha cambiado nada.");
   if(!confirm(`Se van a reemplazar tus ${entries.length} registros actuales por ${v.length} del archivo. ¿Continuar?`))return;
   entries=v;ensureCats();render();alert("Datos importados correctamente ✅")}catch(err){alert("Error al leer el archivo ❌")}finally{inp.value=""}};r.readAsText(f)});
+
+// Sin zoom (pellizco)
+["gesturestart","gesturechange","gestureend"].forEach(t=>document.addEventListener(t,e=>e.preventDefault()));
+document.addEventListener("touchmove",e=>{if(e.touches.length>1)e.preventDefault()},{passive:false});
 
 // Inicio
 ensureCats();initTheme();$("dateInput").value=today();render();switchTab("list");
